@@ -27,6 +27,9 @@ class RegisterView(APIView):
 
 
 class VerifyEmailBeginView(APIView):
+    """
+    This view exists to initialize email verification manually if the auto option fails.
+    """
     serializer_class = EmailVerifyBeginSerializer
     throttle_classes = [AnonRateThrottle]
 
