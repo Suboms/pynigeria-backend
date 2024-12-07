@@ -12,7 +12,9 @@ from django.db.models import (
     OneToOneField,
     CASCADE,
 )
-from nanoid import generate # Ensure 'id' defaults in migration files are set to 'nanoid.generate' and not 'nanoid.generate.generate'
+from nanoid import (
+    generate,
+)  # Ensure 'id' defaults in migration files are set to 'nanoid.generate' and not 'nanoid.generate.generate'
 from django.utils import timezone
 
 
@@ -20,13 +22,14 @@ class UserManager(BaseUserManager):
     """
     Regular users accounts are set up passwordless, only superusers require a password.
     """
+
     def _create_user(self, **kwargs):
         email = kwargs.pop("email")
         password = kwargs.pop("password", None)
         normalized_email = self.normalize_email(email)
         user = self.model(email=normalized_email, **kwargs)
         if password:
-            user.set_password(password) # For superusers currently
+            user.set_password(password)  # For superusers currently
         user.save(using=self._db)
         return user
 
@@ -49,6 +52,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_superuser = BooleanField(default=False)
     is_staff = BooleanField(default=False)
     is_otp_email_sent = BooleanField(default=False)
+    is_test_user = BooleanField(default=False)  # Useful only for running tests
     created = DateTimeField(auto_now_add=True)
     updated = DateTimeField(auto_now=True)
     last_login = DateTimeField(auto_now=True)
@@ -66,8 +70,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class OTPCode(Model):
-    code = CharField(max_length=1024, unique=True, db_index=True)
-    user = OneToOneField(User, related_name="user_otp_code", on_delete=CASCADE)
+    code = CharField(max_length=6, unique=True, db_index=True)
+    user = OneToOneField(User, related_name="otp", on_delete=CASCADE)
     expiry = DateTimeField(
         default=timezone.now() + timezone.timedelta(minutes=15),
         editable=False,
