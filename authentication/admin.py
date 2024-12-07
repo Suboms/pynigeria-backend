@@ -15,7 +15,7 @@ class UserAdmin(ModelAdmin):
         "updated",
         "last_login",
     ]
-    
+
     list_filter = [
         "id",
         "email",
@@ -24,10 +24,9 @@ class UserAdmin(ModelAdmin):
         "is_staff",
         "created",
     ]
-    
-    
+
+
 @register(OTPCode)
 class OTPCodeAdmin(ModelAdmin):
     list_display = ["code", "user", "expiry"]
     list_filter = ["user", "expiry"]
-    

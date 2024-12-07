@@ -20,10 +20,11 @@ class EmailOTP:
 
     def generate_otp(self):
         self.code = TOTP(random_base32(), digits=6).now()
-        OTPCode.objects.create(code=self.code, user=self.user)
 
     def send_email(self):
-        signed_token = signing.dumps(self.code, self.user_id)
+        signed_token = signing.dumps(
+            obj=(self.code, self.user_id), key=settings.SECRET_KEY
+        )
         verification_url = f"{settings.CURRENT_ORIGIN}/api/v1/authentication/email-verify/{signed_token}"
         html_message = f"""
             <html>
@@ -46,6 +47,7 @@ class EmailOTP:
                 fail_silently=False,
             )
             if mail_status == 1:
+                OTPCode.objects.create(code=self.code, user=self.user)
                 self.user.is_otp_email_sent = True
                 self.user.save()
         except Exception as e:

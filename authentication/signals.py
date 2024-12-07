@@ -10,7 +10,7 @@ def send_otp_email(sender, instance, created, **kwargs):
     This handles sending verification emails to new users after saving.
     """
     try:
-        if all([created, not instance.is_superuser]):
+        if all([created, not instance.is_superuser, not instance.is_test_user]):
             EmailOTP(instance).send_email()
     except Exception as e:
         raise Exception(str(e))
