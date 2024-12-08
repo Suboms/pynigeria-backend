@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "drf_spectacular_sidecar",
     "authentication.apps.AuthenticationConfig",
+    'job.apps.JobConfig'
 ]
 
 MIDDLEWARE = [
@@ -156,6 +157,9 @@ REST_FRAMEWORK = {
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
 }
 
 SPECTACULAR_SETTINGS = {
