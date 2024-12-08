@@ -2,10 +2,9 @@ from rest_framework.test import APITransactionTestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
 from django.urls import reverse
-from django.utils import timezone
 
 from authentication.models import User
-from .models import JobPosting  # Replace with your actual user model
+from .models import JobPosting 
 
 class JobAddingTestCase(APITransactionTestCase):
     def setUp(self):
