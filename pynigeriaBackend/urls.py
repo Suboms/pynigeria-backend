@@ -36,6 +36,7 @@ urlpatterns = [
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
+    path("api/v1/jobs/", include('job.urls', namespace="job_posting_v1")),
     # Schema and documentation below
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

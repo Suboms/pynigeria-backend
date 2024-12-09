@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "authentication.apps.AuthenticationConfig",
     "job_api",
     "django_filters",
+    "job.apps.JobConfig"
 ]
 
 MIDDLEWARE = [
