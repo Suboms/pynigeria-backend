@@ -16,16 +16,23 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
+from job_api.views import JobViewset, BookmarkViewset
+
+router = DefaultRouter()
+
+router.register(r"job", JobViewset)
+router.register(r"bookmark", BookmarkViewset, "bookmark")
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path(
+  path("admin/", admin.site.urls), path("", include(router.urls))
+  path(
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
@@ -43,3 +50,4 @@ urlpatterns = [
         name="redoc",
     ),
 ]
+
