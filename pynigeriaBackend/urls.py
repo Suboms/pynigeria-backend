@@ -31,8 +31,9 @@ router.register(r"job", JobViewset)
 router.register(r"bookmark", BookmarkViewset, "bookmark")
 
 urlpatterns = [
-  path("admin/", admin.site.urls), path("", include(router.urls))
-  path(
+    path("admin/", admin.site.urls),
+    path("", include(router.urls)),
+    path(
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
@@ -49,4 +50,3 @@ urlpatterns = [
         name="redoc",
     ),
 ]
-
