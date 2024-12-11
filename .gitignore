@@ -6,3 +6,6 @@ migrations/
 db.sqlite3
 staticfiles/
 a.md
+a.py
+a.js
+*.jpg

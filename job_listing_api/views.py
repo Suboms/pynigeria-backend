@@ -18,8 +18,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from common.filterset import JobFilterset
 from common.helper import Helper
-from job_api.models import Bookmark, Job, JobSkill, Skill
-from job_api.serializers import (
+from job_listing_api.models import Bookmark, Job, JobSkill, Skill
+from job_listing_api.serializers import (
     BookmarkSerializer,
     CreateBookmarkSerializer,
     JobSerializer,

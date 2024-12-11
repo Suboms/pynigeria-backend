@@ -12,15 +12,18 @@ from django.db.models import (
     OneToOneField,
     CASCADE,
 )
-from nanoid import (
-    generate,
-)  # Ensure 'id' defaults in migration files are set to 'nanoid.generate' and not 'nanoid.generate.generate'
+from nanoid import generate
 from django.utils import timezone
+
+
+def generate_user_id():
+    return generate()
 
 
 class UserManager(BaseUserManager):
     """
     Regular users accounts are set up passwordless, only superusers require a password.
+
     """
 
     def _create_user(self, **kwargs):
@@ -45,7 +48,11 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = CharField(
-        max_length=21, primary_key=True, editable=False, unique=True, default=generate
+        max_length=21,
+        primary_key=True,
+        editable=False,
+        unique=True,
+        default=generate_user_id,
     )
     email = EmailField(max_length=120, blank=False, unique=True, db_index=True)
     is_email_verified = BooleanField(default=False, db_index=True)

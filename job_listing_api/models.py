@@ -68,3 +68,6 @@ class Bookmark(models.Model):
 
     class Meta:
         unique_together = ("user", "job")
+
+    def __str__(self):
+        return f"{self.user.email} bookmarked this job"

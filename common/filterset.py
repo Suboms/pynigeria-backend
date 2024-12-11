@@ -1,6 +1,6 @@
 import django_filters
 
-from job_api.models import Job, JobTypeChoice
+from job_listing_api.models import Job, JobTypeChoice
 
 
 class JobFilterset(django_filters.FilterSet):

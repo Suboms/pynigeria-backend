@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "drf_spectacular_sidecar",
     "authentication.apps.AuthenticationConfig",
-    "job_api",
+    "job_listing_api",
     "django_filters",
 ]
 

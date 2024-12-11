@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from job_api.models import Bookmark, Job, JobTypeChoice, Skill
+from job_listing_api.models import Bookmark, Job, JobTypeChoice, Skill
 
 
 class SkillSerializer(serializers.ModelSerializer):
