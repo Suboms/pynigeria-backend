@@ -31,12 +31,13 @@ router.register(r"job", JobViewset)
 router.register(r"bookmark", BookmarkViewset, "bookmark")
 
 urlpatterns = [
-  path("admin/", admin.site.urls), path("", include(router.urls))
-  path(
+    path("admin/", admin.site.urls),
+    path("", include(router.urls)),
+    path(
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
-    path("api/v1/jobs/", include('job.urls', namespace="job_posting_v1")),
+    path("api/v1/jobs/", include("job.urls", namespace="job_posting_v1")),
     # Schema and documentation below
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
@@ -50,4 +51,3 @@ urlpatterns = [
         name="redoc",
     ),
 ]
-

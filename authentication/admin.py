@@ -16,6 +16,8 @@ class UserAdmin(ModelAdmin):
         "last_login",
     ]
 
+    readonly_fields = ["password"]
+
     list_filter = [
         "id",
         "email",
