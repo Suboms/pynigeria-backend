@@ -38,8 +38,10 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
-    "drf_spectacular",
+    "drf_spectacular", # for openapi/swagger documentation
     "drf_spectacular_sidecar",
+    "django_otp", # for 2FA
+    "django_otp.plugins.otp_totp",
     "authentication.apps.AuthenticationConfig",
     "job_api",
     "django_filters",
@@ -54,6 +56,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware", # 2FA middleware
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -168,3 +171,6 @@ EMAIL_PORT = os.getenv("EMAIL_PORT_VALUE")
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER_VALUE")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD_VALUE")
+
+# 2FA TOTP settings
+OTP_TOTP_ISSUER = "pynigeria"

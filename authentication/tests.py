@@ -3,6 +3,15 @@ from .models import User, OTPCode
 from django.urls import reverse
 from django.utils import timezone
 from django.core import mail
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.plugins.otp_totp.models import TOTP
+from time import sleep
+
+
+"""
+RUN COMMAND:
+python3 manage.py test --settings=authentication.test_settings authentication
+"""
 
 
 class RegisterTestCase(APITransactionTestCase):
@@ -30,6 +39,10 @@ class RegisterTestCase(APITransactionTestCase):
         self.assertEqual(
             response.data["detail"], "An account with this email already exists."
         )
+
+    def tearDown(self):
+        User.objects.all().delete()
+        mail.outbox.clear()
 
 
 class VerifyEmailBeginTestCase(APITransactionTestCase):
@@ -74,6 +87,11 @@ class VerifyEmailBeginTestCase(APITransactionTestCase):
             "Check your email for an already existing verification link.",
         )
         self.assertIsNotNone(mail.outbox[0].body.split("'")[1].split("/")[7])
+
+    def tearDown(self):
+        User.objects.all().delete()
+        OTPCode.objects.all().delete()
+        mail.outbox.clear()
 
 
 class VerifyEmailCompleteTestCase(APITransactionTestCase):
@@ -130,3 +148,116 @@ class VerifyEmailCompleteTestCase(APITransactionTestCase):
             "Otp code has expired. a new verification link has been sent to your email.",
         )
         self.assertIsNotNone(mail.outbox[2].body.split("'")[1].split("/")[7])
+
+    def tearDown(self):
+        User.objects.all().delete()
+        OTPCode.objects.all().delete()
+        mail.outbox.clear()
+
+
+class TOTPCreateVerifyTestCase(APITransactionTestCase):
+    def setUp(self):
+        self.device_create = reverse("authentication:create-totp-device")
+        self.user = User.objects.create_user(
+            email="admin@gmail.com", is_email_verified=True
+        )
+
+    def test_create_device_success(self):
+        response = self.client.post(self.device_create, data={"email": self.user.email})
+        for item in {"user", "name", "confirmed"}:
+            self.assertIn(item, response.data["data"])
+        self.assertFalse(response.data["data"]["confirmed"])
+
+        response2 = self.client.post(
+            self.device_create, data={"email": self.user.email}
+        )
+        self.assertEqual(
+            response2.data["detail"], "A totp device already exists for this account."
+        )
+
+    def test_create_device_failure_unverified_email(self):
+        self.user.is_email_verified = False
+        self.user.save()
+        response = self.client.post(self.device_create, data={"email": self.user.email})
+        self.assertEqual(
+            response.data["detail"],
+            "This account has not been verified. check your email for a verification link or request a new one.",
+        )
+
+    def test_create_device_failure_nonexisting_user(self):
+        response = self.client.post(
+            self.device_create, data={"email": "test@gmail.none"}
+        )
+        self.assertEqual(
+            response.data["detail"],
+            "No existing account is associated with this email.",
+        )
+
+    def tearDown(self):
+        User.objects.all().delete()
+        TOTPDevice.objects.all().delete()
+
+
+class GetQRCodeTestCase(APITransactionTestCase):
+    def setUp(self):
+        self.qrcode = reverse("authentication:get-qr-code")
+        self.user = User.objects.create_user(
+            email="admin@gmail.com", is_email_verified=True
+        )
+
+    def test_get_qrcode_success(self):
+        self.client.post(
+            reverse("authentication:create-totp-device"),
+            data={"email": self.user.email},
+        )
+        response = self.client.post(self.qrcode, data={"email": self.user.email})
+        self.assertTrue(type(response.data) == bytes)
+
+    def test_get_qrcode_failure(self):
+        response = self.client.post(self.qrcode, data={"email": self.user.email})
+        self.assertEqual(
+            response.data["detail"],
+            "No unconfirmed totp device is associated with this email.",
+        )
+
+    def tearDown(self):
+        User.objects.all().delete()
+        TOTPDevice.objects.all().delete()
+
+
+class VerifyTOTPDeviceTestCase(APITransactionTestCase):
+    def setUp(self):
+        self.verify_device = reverse("authentication:verify-totp-device")
+        self.user = User.objects.create_user(
+            email="admin@gmail.com", is_email_verified=True
+        )
+
+    def test_verify_totp_device_success(self):
+        self.client.post(
+            reverse("authentication:create-totp-device"),
+            data={"email": self.user.email},
+        )
+        device = TOTPDevice.objects.filter(user=self.user).first()
+        otp_token = TOTP(device.bin_key)
+        response = self.client.post(
+            self.verify_device,
+            data={"email": self.user.email, "otp_token": otp_token.token()},
+        )
+        for item in {"user", "name", "confirmed", "message"}:
+            self.assertIn(item, response.data["data"])
+        self.assertTrue(response.data["data"]["confirmed"])
+
+    def test_verify_totp_device_failure_invalid_code(self):
+        self.client.post(
+            reverse("authentication:create-totp-device"),
+            data={"email": self.user.email},
+        )
+        response = self.client.post(
+            self.verify_device, data={"email": self.user.email, "otp_token": 123456}
+        )
+        self.assertEqual(response.data["detail"], "Invalid totp token detected.")
+
+    def tearDown(self):
+        User.objects.all().delete()
+        TOTPDevice.objects.all().delete()
+        sleep(1)

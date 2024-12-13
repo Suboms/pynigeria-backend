@@ -14,6 +14,9 @@ from django.core import signing
 from django.utils import timezone
 from .email import EmailOTP
 from django.conf import settings
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from pyotp import TOTP
+from base64 import b32encode
 
 
 class UserSerializer(ModelSerializer):
@@ -26,6 +29,12 @@ class UserSerializer(ModelSerializer):
 
     def get_created(self, obj):
         return format(obj.created, "M d, Y. P")
+
+
+class TOTPDeviceSerializer(ModelSerializer):
+    class Meta:
+        model = TOTPDevice
+        fields = ["user", "name", "confirmed"]
 
 
 class RegisterSerializer(Serializer):
@@ -128,3 +137,102 @@ class EmailVerifyCompleteSerializer(Serializer):
             "Your email has been verified successfully. Proceed to 2FA setup."
         )
         return user_data
+
+
+class TOTPDeviceCreateSerializer(Serializer):
+    user = CharField(read_only=True)
+    name = CharField(read_only=True)
+    email = EmailField()
+    confirmed = BooleanField(read_only=True, default=False)
+
+    def validate(self, data):
+        self.email = data.get("email")
+        self.user = User.objects.filter(email=self.email).first()
+        if not self.user:
+            raise ValidationError(
+                detail={"error": "No existing account is associated with this email."}
+            )
+        if not self.user.is_email_verified:
+            raise ValidationError(
+                detail={
+                    "error": "This account has not been verified. Check your email for a verification link or request a new one."
+                }
+            )
+        if TOTPDevice.objects.filter(user=self.user).exists():
+            raise ValidationError(
+                detail={"error": "A TOTP device already exists for this account."}
+            )
+        return data
+
+    def save(self, **kwargs):
+        return TOTPDevice.objects.create(
+            user=self.user, name=self.email, confirmed=False
+        )
+
+    def to_representation(self, instance):
+        return TOTPDeviceSerializer(instance).data
+
+
+class QRCodeDataSerializer(Serializer):
+    otpauth_url = CharField(read_only=True)
+    email = EmailField()
+
+    def validate(self, data):
+        self.email = data.get("email")
+        self.device = TOTPDevice.objects.filter(
+            name=self.email, confirmed=False
+        ).first()
+        if not self.device:
+            raise ValidationError(
+                detail={
+                    "error": "No unconfirmed TOTP device is associated with this email."
+                }
+            )
+        return data
+
+    def save(self, **kwargs):
+        return self.device.config_url
+
+
+class VerifyTOTPDeviceSerializer(Serializer):
+    email = EmailField()
+    otp_token = CharField(write_only=True)
+    user = CharField(read_only=True)
+    name = CharField(read_only=True)
+    confirmed = BooleanField(read_only=True)
+    message = CharField(read_only=True)
+
+    def validate(self, data):
+        self.email = data.get("email")
+        self.otp_token = data.get("otp_token")
+        self.device = (
+            TOTPDevice.objects.select_related("user")
+            .filter(name=self.email, confirmed=False)
+            .first()
+        )
+        if not self.device:
+            raise ValidationError(
+                detail={
+                    "error": "No unconfirmed TOTP device is associated with this email."
+                }
+            )
+        secret_key = b32encode(self.device.bin_key).decode()
+        totp = TOTP(secret_key)
+        if not totp.verify(self.otp_token):
+            raise ValidationError(detail={"error": "Invalid TOTP token detected."})
+        return data
+
+    def save(self, **kwargs):
+        with transaction.atomic():
+            self.device.user.is_2fa_enabled = True
+            self.device.user.save()
+            self.device.confirmed = True
+            self.device.save()
+        return self.device
+
+    def to_representation(self, instance):
+        result = TOTPDeviceSerializer(instance).data
+        result["message"] = (
+            "Your TOTP device has been verified successfully. Proceed to login."
+        )
+        return result
