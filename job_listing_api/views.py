@@ -1,29 +1,26 @@
-import uuid
-import random
-import hashlib
-
-from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db.transaction import atomic
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
-from rest_framework.exceptions import MethodNotAllowed
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.exceptions import AuthenticationFailed, MethodNotAllowed
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import (
     IsAdminUser,
     IsAuthenticated,
     IsAuthenticatedOrReadOnly,
 )
 from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from common.filterset import JobFilterset
 from common.helper import Helper
-from job_api.models import Job, JobSkill, Skill, Bookmark
-from job_api.serializers import (
-    JobSerializer,
-    CreateBookmarkSerializer,
+from job_listing_api.models import Bookmark, Job, JobSkill, Skill
+from job_listing_api.serializers import (
     BookmarkSerializer,
+    CreateBookmarkSerializer,
+    JobSerializer,
 )
 
 # Create your views here.
@@ -32,15 +29,24 @@ from job_api.serializers import (
 class JobViewset(viewsets.ModelViewSet, Helper):
     queryset = Job.objects.all().order_by("-created_at")
     serializer_class = JobSerializer
-    # permission_classes = [IsAdminUser, IsAuthenticated, IsAuthenticatedOrReadOnly]
+    authentication_classes = [SessionAuthentication, JWTAuthentication]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ["skills__name", "title", "company", "location"]
+    search_fields = [
+        "skills__name",
+        "title",
+        "company",
+        "location",
+        "employment_type",
+        "salary",
+    ]
     ordering_fields = [
         "skills__name",
         "title",
         "company",
         "location",
         "posted_by__username",
+        "employment_type",
+        "salary",
     ]
     ordering = ["title"]
     filterset_class = JobFilterset
@@ -91,10 +97,8 @@ class JobViewset(viewsets.ModelViewSet, Helper):
                     | Q(company__icontains=term)
                     | Q(location__icontains=term)
                 )
-            # Apply the filter to the queryset
             queryset = self.queryset.filter(skill_filter).distinct()
 
-        # Return the filtered queryset
         return super().filter_queryset(queryset)
 
     def retrieve(self, request, *args, **kwargs):
@@ -111,16 +115,24 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         company = serializer.validated_data.get("company")
         location = serializer.validated_data.get("location")
         description = serializer.validated_data.get("description")
+        job_type = serializer.validated_data.get("employment_type")
+        salary = serializer.validated_data.get("salary")
+        deadline = serializer.validated_data.get("application_deadline")
         posted_by = self.request.user if self.request.user.is_authenticated else ""
         skills_data = serializer.validated_data.get("skills", [])
-        input_value = [title, company, location, description, str(posted_by.id)]
-        input_value.extend(data["name"].lower() for data in skills_data)
-        random.shuffle(input_value)
-        combined_input = " ".join(input_value).encode("utf-8")
-        print(combined_input)
-        seed = int(hashlib.sha256(combined_input).hexdigest(), 16)
-        random.seed(seed)
-        slug = uuid.UUID(int=random.getrandbits(128), version=4)
+        slug = self.generate_slug(
+            title,
+            company,
+            location,
+            description,
+            str(posted_by.id),
+            skills_data,
+            job_type,
+            str(salary),
+            str(deadline),
+        )
+
+        print()
 
         try:
 
@@ -130,6 +142,9 @@ class JobViewset(viewsets.ModelViewSet, Helper):
                 location=location.lower(),
                 description=description.lower(),
                 posted_by=posted_by,
+                salary=salary,
+                employment_type=job_type,
+                application_deadline=deadline,
                 slug=slug,
             )
             job.save()
@@ -158,14 +173,20 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            modified_response = self.format_list(serializer.data)
-            return self.get_paginated_response(modified_response)
+        try:
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                modified_response = self.format_list(serializer.data)
+                return self.get_paginated_response(modified_response)
 
-        serializer = self.get_serializer(queryset, many=True)
-        modified_response = self.format_list(serializer.data)
-        return Response(modified_response)
+            serializer = self.get_serializer(queryset, many=True)
+            modified_response = self.format_list(serializer.data)
+            return Response(modified_response)
+        except Exception as runtime_error:
+            return Response(
+                {"error": "Runtime Error Occured", "detail": str(runtime_error)},
+                status=500,
+            )
 
 
 class BookmarkViewset(viewsets.ModelViewSet):

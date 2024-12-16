@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from job_api.models import Job, Skill, Bookmark
+from job_listing_api.models import Bookmark, Job, JobTypeChoice, Skill
 
 
 class SkillSerializer(serializers.ModelSerializer):
@@ -17,23 +17,26 @@ class JobSerializer(serializers.ModelSerializer):
     )
     skills = SkillSerializer(many=True)
 
+    employment_type = serializers.ChoiceField(choices=JobTypeChoice.choices)
+
     class Meta:
         model = Job
         exclude = ("slug",)
         read_only_fields = ["posted_by", "created_at"]
+
+    def to_internal_value(self, data):
+        data["employment_type"] = data["employment_type"].title()
+        return super().to_internal_value(data)
 
 
 class CreateBookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bookmark
-        fields = ("job",)
-
-    # def validate_job(self, job):
-    #     user = self.context['request'].user
-    #     if Bookmark.objects.filter(user=user, job=job).exists():
-    #         raise serializers.ValidationError("You have already bookmarked this job.")
-    #     return job
+        fields = (
+            "job",
+            "note",
+        )
 
 
 class BookmarkSerializer(serializers.ModelSerializer):
@@ -46,4 +49,10 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bookmark
-        fields = ("job_title", "job_company", "job_description", "job_instance")
+        fields = ("job_title", "job_company", "job_description", "job_instance", "note")
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get("note") is None:
+            data.pop("note", None)
+        return data
