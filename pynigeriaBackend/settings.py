@@ -35,14 +35,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "corsheaders",
-    "rest_framework",
-    "rest_framework_simplejwt",
-    "drf_spectacular",
-    "drf_spectacular_sidecar",
-    "authentication.apps.AuthenticationConfig",
-    "job_api",
-    "django_filters",
+    # "corsheaders",
+    # "rest_framework",
+    # "rest_framework_simplejwt",
+    # "drf_spectacular",
+    # "drf_spectacular_sidecar",
+     "authentication.apps.AuthenticationConfig",
+    # "job_api",
+    # "django_filters",
+    "tracking",
 ]
 
 MIDDLEWARE = [
