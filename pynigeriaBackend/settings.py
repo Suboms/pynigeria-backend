@@ -18,13 +18,14 @@ SECRET_KEY = os.getenv("SECRET_KEY_VALUE")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG_VALUE", "true").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(",") # Use commas to seperate muliple host values
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1", ).split(",") # Use commas to seperate muliple host values
+# print(ALLOWED_HOSTS)
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS_VALUE", "http://127.0.0.1").split(",") # Same comma-value-seperation as above
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["13c2-102-89-32-209.ngrok-free.app", "localhost" ]
 
 # Application definition
 
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "authentication.apps.AuthenticationConfig",
     "job_listing_api",
+    "job_application_api",
     "django_filters",
 ]
 
@@ -125,6 +127,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 

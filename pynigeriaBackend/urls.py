@@ -24,6 +24,8 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 from job_listing_api.views import JobViewset, BookmarkViewset
+from django.conf.urls.static import static
+from django.conf import settings
 
 router = DefaultRouter()
 
@@ -50,3 +52,4 @@ urlpatterns = [
         name="redoc",
     ),
 ]
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

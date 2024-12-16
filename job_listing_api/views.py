@@ -13,8 +13,6 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
 
 from common.filterset import JobFilterset
 from common.helper import Helper
@@ -26,9 +24,6 @@ from job_listing_api.serializers import (
 )
 
 # Create your views here.
-
-
-
 
 
 class JobViewset(viewsets.ModelViewSet, Helper):
@@ -102,10 +97,8 @@ class JobViewset(viewsets.ModelViewSet, Helper):
                     | Q(company__icontains=term)
                     | Q(location__icontains=term)
                 )
-            # Apply the filter to the queryset
             queryset = self.queryset.filter(skill_filter).distinct()
 
-        # Return the filtered queryset
         return super().filter_queryset(queryset)
 
     def retrieve(self, request, *args, **kwargs):
