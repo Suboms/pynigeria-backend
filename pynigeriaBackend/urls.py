@@ -23,7 +23,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
-from job_listing_api.views import JobViewset, BookmarkViewset
+from job_api.views import JobViewset, BookmarkViewset
 from django.conf.urls.static import static
 from django.conf import settings
 
@@ -39,6 +39,7 @@ urlpatterns = [
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
+    path("api/v1/jobs/", include("job.urls", namespace="job_posting_v1")),
     # Schema and documentation below
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
@@ -52,4 +53,5 @@ urlpatterns = [
         name="redoc",
     ),
 ]
+
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

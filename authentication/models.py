@@ -22,10 +22,9 @@ def generate_user_id():
 
 class UserManager(BaseUserManager):
     """
-    Regular users accounts are set up passwordless, only superusers require a password.
-
+    Regular user accounts are set up passwordless, only superusers require a password.
     """
-
+    
     def _create_user(self, **kwargs):
         email = kwargs.pop("email")
         password = kwargs.pop("password", None)

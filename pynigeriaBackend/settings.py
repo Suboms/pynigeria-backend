@@ -18,14 +18,13 @@ SECRET_KEY = os.getenv("SECRET_KEY_VALUE")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG_VALUE", "true").lower() == "true"
 
-# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1", ).split(",") # Use commas to seperate muliple host values
-# print(ALLOWED_HOSTS)
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(",") # Use commas to seperate muliple host values
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS_VALUE", "http://127.0.0.1").split(",") # Same comma-value-seperation as above
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["13c2-102-89-32-209.ngrok-free.app", "localhost" ]
+ALLOWED_HOSTS = []
 
 # Application definition
 
@@ -39,12 +38,14 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
-    "drf_spectacular",
+    "drf_spectacular", # for openapi/swagger documentation
     "drf_spectacular_sidecar",
+    "django_otp", # for 2FA
+    "django_otp.plugins.otp_totp",
     "authentication.apps.AuthenticationConfig",
-    "job_listing_api",
-    "job_application_api",
+    "job_api",
     "django_filters",
+    "job.apps.JobConfig"
 ]
 
 MIDDLEWARE = [
@@ -55,6 +56,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware", # 2FA middleware
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -128,10 +130,6 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
@@ -173,3 +171,6 @@ EMAIL_PORT = os.getenv("EMAIL_PORT_VALUE")
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER_VALUE")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD_VALUE")
+
+# 2FA TOTP settings
+OTP_TOTP_ISSUER = "pynigeria"
