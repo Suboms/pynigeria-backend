@@ -5,3 +5,9 @@ __pycache__/
 migrations/
 db.sqlite3
 staticfiles/
+a.md
+a.py
+a.js
+*.jpg
+response.json
+test.py
