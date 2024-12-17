@@ -23,7 +23,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
-from job_api.views import JobViewset, BookmarkViewset
+from job_listing_api.views import JobViewset, BookmarkViewset
 from django.conf.urls.static import static
 from django.conf import settings
 
