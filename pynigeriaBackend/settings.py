@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Third-Party packages
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
@@ -42,9 +44,12 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "django_otp", # for 2FA
     "django_otp.plugins.otp_totp",
-    "authentication.apps.AuthenticationConfig",
-    "job_api",
     "django_filters",
+
+    # Local App packages
+    "authentication.apps.AuthenticationConfig",
+    "job_application_api.apps.JobApplicationApiConfig",
+    "job_listing_api.apps.JobApiConfig",
     "job.apps.JobConfig"
 ]
 
