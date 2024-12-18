@@ -9,7 +9,7 @@ class JobTypeChoice(models.TextChoices):
     PART_TIME = "Part Time"
     CONTRACT = "Contract"
     INTERNSHIP = "Internship"
-    TEMPORARY = "Temporary"
+    VOLUNTARY = "Voluntary"
 
 
 class Skill(models.Model):
@@ -42,7 +42,7 @@ class Job(models.Model):
     slug = models.UUIDField(unique=True, db_index=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.title} at {self.company}"
 
 
 class JobSkill(models.Model):
@@ -71,3 +71,5 @@ class Bookmark(models.Model):
 
     def __str__(self):
         return f"{self.user.email} bookmarked this job"
+
+

@@ -4,7 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
-from rest_framework.exceptions import AuthenticationFailed, MethodNotAllowed
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import (
     IsAdminUser,
@@ -22,6 +22,8 @@ from job_listing_api.serializers import (
     CreateBookmarkSerializer,
     JobSerializer,
 )
+from .permissions import IsJobPoster
+from rest_framework import status
 
 # Create your views here.
 
@@ -30,6 +32,7 @@ class JobViewset(viewsets.ModelViewSet, Helper):
     queryset = Job.objects.all().order_by("-created_at")
     serializer_class = JobSerializer
     authentication_classes = [SessionAuthentication, JWTAuthentication]
+    permission_classes = [IsJobPoster]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = [
         "skills__name",
@@ -44,7 +47,7 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         "title",
         "company",
         "location",
-        "posted_by__username",
+        "posted_by__email",
         "employment_type",
         "salary",
     ]
@@ -54,33 +57,6 @@ class JobViewset(viewsets.ModelViewSet, Helper):
 
     def list(self, request, *args, **kwargs):
         raise MethodNotAllowed(method="get")
-
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if (
-            request.user.id == instance.posted_by.id
-            or request.user.is_superuser
-            or request.user.is_staff
-        ):
-            self.perform_destroy(instance)
-            return Response(status=204)
-        return Response(
-            {"detail": "You do not have sufficient permission to perform this action"},
-            status=400,
-        )
-
-    def get_permissions(self):
-        if self.action == "create" or "destroy":
-            permission_classes = [IsAuthenticated, IsAdminUser]
-        else:
-            permission_classes = [IsAuthenticatedOrReadOnly]
-        return [permission() for permission in permission_classes]
 
     def filter_queryset(self, queryset):
         search_param = self.request.query_params.get("search")
@@ -100,12 +76,6 @@ class JobViewset(viewsets.ModelViewSet, Helper):
             queryset = self.queryset.filter(skill_filter).distinct()
 
         return super().filter_queryset(queryset)
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        modified_data = self.format_instance(serializer.data)
-        return Response(modified_data)
 
     @atomic()
     def create(self, request, *args, **kwargs):
@@ -132,36 +102,27 @@ class JobViewset(viewsets.ModelViewSet, Helper):
             str(deadline),
         )
 
-        print()
+        job = Job(
+            title=title.lower(),
+            company=company.lower(),
+            location=location.lower(),
+            description=description.lower(),
+            posted_by=posted_by,
+            salary=salary,
+            employment_type=job_type,
+            application_deadline=deadline,
+            slug=slug,
+        )
+        job.save()
 
-        try:
+        for data in skills_data:
+            skill_name = data["name"].strip().lower()
+            skill, created = Skill.objects.get_or_create(name=skill_name)
+            JobSkill.objects.create(job=job, skill=skill)
 
-            job = Job(
-                title=title.lower(),
-                company=company.lower(),
-                location=location.lower(),
-                description=description.lower(),
-                posted_by=posted_by,
-                salary=salary,
-                employment_type=job_type,
-                application_deadline=deadline,
-                slug=slug,
-            )
-            job.save()
+        job_serializer = self.get_serializer(job)
 
-            for data in skills_data:
-                skill_name = data["name"].strip().lower()
-                skill, created = Skill.objects.get_or_create(name=skill_name)
-                JobSkill.objects.create(job=job, skill=skill)
-
-            job_serializer = self.get_serializer(job)
-
-            return Response(job_serializer.data, status=201)
-        except Exception as e:
-            return Response(
-                {"detail": "An unexpected error occures", "error": str(e)},
-                status=500,
-            )
+        return Response(job_serializer.data, status=201)
 
     @action(
         methods=["get"],
@@ -169,24 +130,58 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         url_path="job-list",
         url_name="job-list",
     )
-    def jobs_list(self, request, *args, **kwargs):
+    def job_list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
-        try:
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                modified_response = self.format_list(serializer.data)
-                return self.get_paginated_response(modified_response)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-            serializer = self.get_serializer(queryset, many=True)
-            modified_response = self.format_list(serializer.data)
-            return Response(modified_response)
-        except Exception as runtime_error:
-            return Response(
-                {"error": "Runtime Error Occured", "detail": str(runtime_error)},
-                status=500,
-            )
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @atomic()
+    def update(self, request, *args, **kwargs):
+        """
+        Custom update method with enhanced validation for nested fields.
+
+        Supports partial and full updates with comprehensive data handling.
+        """
+        # Retrieve the existing instance
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        self.check_object_permissions(request, instance)
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+            context={"request": request},  # Important for nested serializers
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_instance = serializer.save()
+
+        if getattr(instance, "_prefetched_objects_cache", None):
+            instance._prefetched_objects_cache = None
+        return Response(
+            self.get_serializer(updated_instance).data, status=status.HTTP_200_OK
+        )
+
+    @atomic()
+    def partial_update(self, request, *args, **kwargs):
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
+    @atomic()
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=204)
 
 
 class BookmarkViewset(viewsets.ModelViewSet):
