@@ -14,11 +14,12 @@ class JobTypeChoice(models.TextChoices):
 
 class Skill(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(null=True)
 
     def __str__(self) -> str:
         return self.name
 
+# class Tag(models.Model):
+#     name = models.CharField(max_length=255, unique=True)
 
 class Job(models.Model):
     title = models.CharField(max_length=255)
@@ -32,6 +33,7 @@ class Job(models.Model):
         through_fields=("job", "skill"),
         db_index=True,
     )
+    # tags = models.ManyToManyField(Tag, through="JobTag", through_fields=("job", "tag"), db_index=True)
     employment_type = models.CharField(
         max_length=255, choices=JobTypeChoice.choices, default=JobTypeChoice.FULL_TIME
     )
@@ -57,6 +59,12 @@ class JobSkill(models.Model):
     def __str__(self):
         return f"{self.job.title} - {self.skill.name}"
 
+# class JobTag(models.Model):
+#     job = models.ForeignKey(Job, on_delete=models.CASCADE)
+#     tag = models.ForeignKey(Tag, on_delete=models.CASCADE, to_field="name")
+
+#     class Meta:
+#         unique_together = ("job", "tag")
 
 class Bookmark(models.Model):
     user = models.ForeignKey(

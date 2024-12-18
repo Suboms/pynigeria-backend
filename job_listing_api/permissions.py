@@ -11,7 +11,7 @@ class IsJobPoster(BasePermission):
     
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True
+            return False
         if request.method in ["DELETE", "PUT", "PATCH"]:
             return obj.posted_by == request.user or request.user.is_superuser
         return False
