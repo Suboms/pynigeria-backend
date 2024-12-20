@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     "authentication.apps.AuthenticationConfig",
     "job_application_api.apps.JobApplicationApiConfig",
     "job_listing_api.apps.JobApiConfig",
-    "job.apps.JobConfig"
+    "job.apps.JobConfig",
+    "knowledge_base_api.apps.KnowledgeBaseApiConfig",
 ]
 
 MIDDLEWARE = [
