@@ -45,13 +45,12 @@ INSTALLED_APPS = [
     "django_otp", # for 2FA
     "django_otp.plugins.otp_totp",
     "django_filters",
-
-    # Local App packages
     "authentication.apps.AuthenticationConfig",
     "job_application_api.apps.JobApplicationApiConfig",
     "job_listing_api.apps.JobApiConfig",
     "job.apps.JobConfig",
     "knowledge_base_api.apps.KnowledgeBaseApiConfig",
+    "tracking"
 ]
 
 MIDDLEWARE = [
