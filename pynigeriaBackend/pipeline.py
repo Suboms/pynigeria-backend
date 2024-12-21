@@ -1,14 +1,13 @@
 from social_core.pipeline.user import USER_FIELDS
+from rest_framework.exceptions import AuthenticationFailed
 
 
 def custom_create_user(backend, details, user=None, *args, **kwargs):
     # Check for existing user with verified email
     if user:
         if not user.is_email_verified:
-            raise ValueError(
-                {
-                    "error": "This account has not been verified. Check your email for a verification link."
-                }
+            raise AuthenticationFailed(
+                "This account has not been verified. Check your email for a verification link."
             )
         else:
             return {"is_new": False}  # existing user account
@@ -20,4 +19,4 @@ def custom_create_user(backend, details, user=None, *args, **kwargs):
         return
     fields["is_email_verified"] = True
     user = backend.strategy.create_user(**fields)
-    return {"is_new": False, "user": user}
+    return {"is_new": True, "user": user}
