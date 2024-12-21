@@ -55,6 +55,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     email = EmailField(max_length=120, blank=False, unique=True, db_index=True)
     is_email_verified = BooleanField(default=False, db_index=True)
+    is_2fa_enabled = BooleanField(default=False, db_index=True)
     is_superuser = BooleanField(default=False)
     is_staff = BooleanField(default=False)
     is_otp_email_sent = BooleanField(default=False)

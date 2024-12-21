@@ -238,10 +238,10 @@ class VerifyTOTPDeviceTestCase(APITransactionTestCase):
             data={"email": self.user.email},
         )
         device = TOTPDevice.objects.filter(user=self.user).first()
-        otp_token = TOTP(device.bin_key)
+        otp_token = TOTP(device.bin_key).token()
         response = self.client.post(
             self.verify_device,
-            data={"email": self.user.email, "otp_token": otp_token.token()},
+            data={"email": self.user.email, "otp_token": otp_token},
         )
         for item in {"user", "name", "confirmed", "message"}:
             self.assertIn(item, response.data["data"])
@@ -260,4 +260,58 @@ class VerifyTOTPDeviceTestCase(APITransactionTestCase):
     def tearDown(self):
         User.objects.all().delete()
         TOTPDevice.objects.all().delete()
-        sleep(1)
+
+
+class LoginTestCase(APITransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="admin@gmail.com", is_email_verified=True
+        )
+        self.otp_device = TOTPDevice.objects.create(
+            user=self.user, name=self.user.email, confirmed=True
+        )
+        self.login = reverse("authentication:login")
+
+    def test_login_success(self):
+        self.user.is_2fa_enabled = True
+        self.user.save()
+        otp_code = TOTP(self.otp_device.bin_key).token()
+        response = self.client.post(
+            self.login, data={"email": self.user.email, "otp_code": otp_code}
+        )
+        self.assertIn("access", response.data["data"])
+        self.assertEqual(response.status_code, 200)
+
+    def test_login_failure_no_account(self):
+        self.user.is_2fa_enabled = True
+        self.user.save()
+        otp_code = TOTP(self.otp_device.bin_key).token()
+        response = self.client.post(
+            self.login, data={"email": "admi1n@gmail.com", "otp_code": otp_code}
+        )
+        self.assertEqual(
+            response.data["detail"], "No account is associated with this email."
+        )
+
+    def test_login_failure_2fa_not_set(self):
+        response = self.client.post(
+            self.login, data={"email": self.user.email, "otp_code": 386267}
+        )
+        self.assertEqual(
+            response.data["detail"], "2FA setup must be completed before login."
+        )
+
+    def test_login_failure_no_totp_device(self):
+        self.user.is_2fa_enabled = True
+        self.user.save()
+        self.otp_device.delete()
+        response = self.client.post(
+            self.login, data={"email": self.user.email, "otp_code": 638387}
+        )
+        self.assertEqual(
+            response.data["detail"],
+            "No confirmed totp device is associated with this email.",
+        )
+
+    def tearDown(self):
+        return super().tearDown()

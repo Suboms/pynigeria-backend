@@ -6,6 +6,7 @@ from .serializers import (
     TOTPDeviceCreateSerializer,
     QRCodeDataSerializer,
     VerifyTOTPDeviceSerializer,
+    LoginSerializer,
 )
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.response import Response
@@ -14,6 +15,14 @@ from drf_spectacular.utils import extend_schema
 import qrcode
 from io import BytesIO
 from rest_framework.renderers import BaseRenderer, BrowsableAPIRenderer
+from django.shortcuts import redirect
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
+from social_django.utils import psa
+from social_core.actions import do_auth
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from .social_authentication import complete_social_authentication
 
 
 class RegisterView(APIView):
@@ -31,7 +40,7 @@ class RegisterView(APIView):
 
 class VerifyEmailBeginView(APIView):
     """
-    This view exists to initialize email verification manually if the auto option fails.
+    This view exists to initiate email verification manually if the auto option fails.
     """
 
     serializer_class = EmailVerifyBeginSerializer
@@ -143,3 +152,52 @@ class VerifyTOTPDeviceView(APIView):
             device_data = serializer.save()
             response_data = self.serializer_class(device_data).data
             return Response({"data": response_data}, status=status.HTTP_200_OK)
+
+
+class LoginView(APIView):
+    serializer_class = LoginSerializer
+    throttle_classes = [AnonRateThrottle]
+
+    @extend_schema(operation_id="v1_login", tags=["auth_v1"])
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            user_data = serializer.save()
+            response_data = self.serializer_class(user_data).data
+            return Response({"data": response_data}, status=status.HTTP_200_OK)
+
+
+@method_decorator(
+    [csrf_exempt, never_cache, psa("authentication:social-complete")], name="get"
+)
+class SocialAuthenticationBeginView(APIView):
+    """This view initiates social oauth authentication"""
+
+    throttle_classes = [AnonRateThrottle]
+
+    @extend_schema(
+        operation_id="v1_social_auth_begin",
+        tags=["auth_v1"],
+        request=None,
+        responses=None,
+    )
+    def get(self, request, backend):
+        return do_auth(request.backend, redirect_name=REDIRECT_FIELD_NAME)
+
+
+@method_decorator(
+    [csrf_exempt, never_cache, psa("authentication:social-complete")], name="get"
+)
+class SocialAuthenticationCompleteView(APIView):
+    """This view completes social oauth authentication"""
+
+    throttle_classes = [AnonRateThrottle]
+
+    @extend_schema(
+        operation_id="v1_social_auth_complete",
+        tags=["auth_v1"],
+        request=None,
+        responses=None,
+    )
+    def get(self, request, backend):
+        return complete_social_authentication(request, backend)
