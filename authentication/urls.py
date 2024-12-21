@@ -6,7 +6,11 @@ from .views import (
     TOTPDeviceCreateView,
     GetQRCodeView,
     VerifyTOTPDeviceView,
+    LoginView,
+    SocialAuthenticationBeginView,
+    SocialAuthenticationCompleteView,
 )
+from social_django.urls import extra
 
 
 app_name = "authentication"
@@ -28,4 +32,7 @@ urlpatterns = [
     path(
         "totp-device/verify/", VerifyTOTPDeviceView.as_view(), name="verify-totp-device"
     ),
+    path("login/", LoginView.as_view(), name="login"),
+    path(f"social/begin/<str:backend>{extra}", SocialAuthenticationBeginView.as_view(), name="social-begin"),
+    path("social/complete/<str:backend>/", SocialAuthenticationCompleteView.as_view(), name="social-complete"),
 ]
