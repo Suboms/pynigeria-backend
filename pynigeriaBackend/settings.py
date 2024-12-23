@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "job_listing_api.apps.JobApiConfig",
     "job.apps.JobConfig",
     "knowledge_base_api.apps.KnowledgeBaseApiConfig",
+    "taggit"
 ]
 
 MIDDLEWARE = [
@@ -157,6 +158,10 @@ REST_FRAMEWORK = {
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
+
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
 }
 
 SPECTACULAR_SETTINGS = {
