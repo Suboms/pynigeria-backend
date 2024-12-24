@@ -2,11 +2,15 @@ from rest_framework import generics
 from .models import UserUpload
 from .serializers import UserUploadSerializer
 from .permissions import CustomPermission
+from rest_framework.permissions import IsAdminUser
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
+
+
 # Create your views here.
+
 
 class UserUploadListCreateViewAPIView(generics.ListCreateAPIView):
     queryset = UserUpload.objects.all()
@@ -37,7 +41,7 @@ class PublishedUploadsListAPIView(generics.ListAPIView):
 
 
 class UpdateUploadStatusAPIView(APIView):
-    permission_classes = [CustomPermission]
+    permission_classes = [IsAdminUser]
 
     def patch(self, request, pk):
         upload = get_object_or_404(UserUpload, pk=pk)
