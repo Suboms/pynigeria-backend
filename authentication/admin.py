@@ -1,5 +1,6 @@
-from django.contrib.admin import register, ModelAdmin
-from .models import User, OTPCode
+from django.contrib.admin import ModelAdmin, register
+
+from .models import OTPCode, User
 
 
 @register(User)

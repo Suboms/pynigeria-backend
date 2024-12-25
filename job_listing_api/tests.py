@@ -1,9 +1,9 @@
+from django.urls import reverse
 from rest_framework.test import APITransactionTestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
-from django.urls import reverse
-
 from authentication.models import User
+
 from .models import Job
 
 

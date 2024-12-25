@@ -1,29 +1,29 @@
 from django.db.models import Q
 from django.db.transaction import atomic
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import (
-    IsAdminUser,
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
-)
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from common.filterset import JobFilterset
 from common.helper import Helper
-from job_listing_api.models import Bookmark, Job, JobSkill, Skill
+from job_listing_api.models import Bookmark, Job
 from job_listing_api.serializers import (
     BookmarkSerializer,
     CreateBookmarkSerializer,
     JobSerializer,
+    JobApproveSerializer,
 )
+
 from .permissions import IsJobPoster
-from rest_framework import status
+from .email import JobNotificationEmail
+from rest_framework.views import APIView
 
 # Create your views here.
 
@@ -59,6 +59,9 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         raise MethodNotAllowed(method="get")
 
     def filter_queryset(self, queryset):
+        """
+        Apply search filters while maintaining queryset ordering.
+        """
         search_param = self.request.query_params.get("search")
 
         if search_param:
@@ -73,56 +76,33 @@ class JobViewset(viewsets.ModelViewSet, Helper):
                     | Q(company__icontains=term)
                     | Q(location__icontains=term)
                 )
-            queryset = self.queryset.filter(skill_filter).distinct()
+            queryset = queryset.filter(skill_filter).distinct().order_by("-created_at")
 
-        return super().filter_queryset(queryset)
+        # Maintain order by `-created_at`
+        return queryset
 
     @atomic()
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        title = serializer.validated_data.get("title")
-        company = serializer.validated_data.get("company")
-        location = serializer.validated_data.get("location")
-        description = serializer.validated_data.get("description")
-        job_type = serializer.validated_data.get("employment_type")
-        salary = serializer.validated_data.get("salary")
-        deadline = serializer.validated_data.get("application_deadline")
+        slug = self.generate_slug()
         posted_by = self.request.user if self.request.user.is_authenticated else ""
-        skills_data = serializer.validated_data.get("skills", [])
-        slug = self.generate_slug(
-            title,
-            company,
-            location,
-            description,
-            str(posted_by.id),
-            skills_data,
-            job_type,
-            str(salary),
-            str(deadline),
+        published_at = timezone.now()
+
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "request": request,
+                "slug": slug,
+                "posted_by": posted_by,
+                "published_at": published_at,
+            },
         )
+        serializer.is_valid(raise_exception=True)
+        created_instance = serializer.create(serializer.validated_data)
+        response_data = self.get_serializer(
+            created_instance, context={"request": request}
+        ).data
 
-        job = Job(
-            title=title.lower(),
-            company=company.lower(),
-            location=location.lower(),
-            description=description.lower(),
-            posted_by=posted_by,
-            salary=salary,
-            employment_type=job_type,
-            application_deadline=deadline,
-            slug=slug,
-        )
-        job.save()
-
-        for data in skills_data:
-            skill_name = data["name"].strip().lower()
-            skill, created = Skill.objects.get_or_create(name=skill_name)
-            JobSkill.objects.create(job=job, skill=skill)
-
-        job_serializer = self.get_serializer(job)
-
-        return Response(job_serializer.data, status=201)
+        return Response(response_data, status=201)
 
     @action(
         methods=["get"],
@@ -148,29 +128,16 @@ class JobViewset(viewsets.ModelViewSet, Helper):
 
     @atomic()
     def update(self, request, *args, **kwargs):
-        """
-        Custom update method with enhanced validation for nested fields.
-
-        Supports partial and full updates with comprehensive data handling.
-        """
-        # Retrieve the existing instance
-        partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        self.check_object_permissions(request, instance)
         serializer = self.get_serializer(
-            instance,
-            data=request.data,
-            partial=partial,
-            context={"request": request},  # Important for nested serializers
+            instance, data=request.data, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
-        updated_instance = serializer.save()
-
-        if getattr(instance, "_prefetched_objects_cache", None):
-            instance._prefetched_objects_cache = None
-        return Response(
-            self.get_serializer(updated_instance).data, status=status.HTTP_200_OK
-        )
+        updated_instance = serializer.update(instance, serializer.validated_data)
+        response_data = self.get_serializer(
+            updated_instance, context={"request": request}
+        ).data
+        return Response(response_data)
 
     @atomic()
     def partial_update(self, request, *args, **kwargs):
@@ -212,3 +179,26 @@ class BookmarkViewset(viewsets.ModelViewSet):
         bookmark = Bookmark(job=job, user=user)
         bookmark.save()
         return Response({"message": "Job bookmarked successfully"}, status=200)
+
+
+class JobApproveView(APIView):
+    serializer_class = JobApproveSerializer
+
+    # @atomic()
+    def post(self, request, slug):
+
+        job_instance = Job.objects.get(slug=slug)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated_job = serializer.save(job_instance=job_instance)
+        status = "approved" if updated_job.is_approved else "rejected"
+        message=serializer.data.get("message") if serializer.data.get("message") else None
+
+        JobNotificationEmail(updated_job).send_to_poster(updated_job.is_approved, message)
+        return Response(
+            {   "status":status.title(),
+                "message": message,
+                "is_approved": updated_job.is_approved,
+            },
+            status=200,
+        )

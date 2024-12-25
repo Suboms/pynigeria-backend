@@ -1,13 +1,13 @@
 from django.urls import path
+
 from .views import (
+    GetQRCodeView,
     RegisterView,
+    TOTPDeviceCreateView,
     VerifyEmailBeginView,
     VerifyEmailCompleteView,
-    TOTPDeviceCreateView,
-    GetQRCodeView,
     VerifyTOTPDeviceView,
 )
-
 
 app_name = "authentication"
 

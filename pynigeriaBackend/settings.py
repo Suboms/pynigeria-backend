@@ -1,13 +1,14 @@
-from pathlib import Path
-from dotenv import load_dotenv
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env_file = BASE_DIR / ".env"
 if env_file.exists():
-    load_dotenv(env_file)
+    load_dotenv(env_file, override=True)
 else:
     print("No env file detected.")
     exit(code=5000)
@@ -18,13 +19,20 @@ SECRET_KEY = os.getenv("SECRET_KEY_VALUE")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG_VALUE", "true").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(",") # Use commas to seperate muliple host values
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS_VALUE", "http://127.0.0.1").split(",") # Same comma-value-seperation as above
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(
+    ","
+)  # Use commas to seperate muliple host values
+
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS_VALUE", "http://127.0.0.1"
+).split(
+    ","
+)  # Same comma-value-seperation as above
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = []
 
 # Application definition
 
@@ -38,9 +46,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
-    "drf_spectacular", # for openapi/swagger documentation
+    "drf_spectacular",  # for openapi/swagger documentation
     "drf_spectacular_sidecar",
-    "django_otp", # for 2FA
+    "django_otp",  # for 2FA
     "django_otp.plugins.otp_totp",
     "authentication.apps.AuthenticationConfig",
     "job_listing_api",
@@ -55,7 +63,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django_otp.middleware.OTPMiddleware", # 2FA middleware
+    "django_otp.middleware.OTPMiddleware",  # 2FA middleware
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -65,7 +73,7 @@ ROOT_URLCONF = "pynigeriaBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -173,5 +181,3 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD_VALUE")
 
 # 2FA TOTP settings
 OTP_TOTP_ISSUER = "pynigeria"
-
-APPEND_SLASH = True

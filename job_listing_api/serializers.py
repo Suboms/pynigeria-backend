@@ -1,12 +1,28 @@
-from rest_framework import serializers
-
-from job_listing_api.models import Bookmark, Job, JobTypeChoice, Skill
 from datetime import datetime
-
-from django.contrib.auth import get_user_model
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
+from rest_framework import serializers
+from django.utils.timezone import now
+
+from job_listing_api.models import (
+    Bookmark,
+    Job,
+    JobSkill,
+    JobTag,
+    JobTypeChoice,
+    Skill,
+    Tag,
+    Company,
+)
+from common.helper import Helper
+from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.db.models import F
+
 User = get_user_model()
+
+
 class SkillSerializer(serializers.ModelSerializer):
     name = serializers.CharField(validators=[])
 
@@ -15,81 +31,207 @@ class SkillSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class JobSerializer(serializers.ModelSerializer):
+class TagSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(validators=[])
+
+    class Meta:
+        model = Tag
+        fields = "__all__"
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    name = serializers.CharField(validators=[])
+
+    class Meta:
+        model = Company
+        fields = "__all__"
+
+
+SCHEDULE_CHOICE = {
+    "Immediate": "Immediate",
+    "One Week": "One Week",
+    "One Month": "One Month",
+    "Custom": "Custom",
+}
+
+
+class JobSerializer(serializers.ModelSerializer, Helper):
     job = serializers.HyperlinkedIdentityField(
         view_name="job-detail", lookup_field="slug"
     )
     skills = SkillSerializer(many=True)
-
+    tags = TagSerializer(many=True)
+    company = CompanySerializer(required=False)
+    schedule_choice = serializers.ChoiceField(
+        choices=SCHEDULE_CHOICE, required=True, write_only=True
+    )
     employment_type = serializers.ChoiceField(choices=JobTypeChoice.choices)
 
     class Meta:
         model = Job
         exclude = ("slug",)
-        read_only_fields = ["posted_by", "created_at"]
+        read_only_fields = [
+            "posted_by",
+            "created_at",
+            "published_at",
+            "views_count",
+            "applications_count",
+            "original_job",
+            "status",
+            "company_name",
+            "scheduled_publish_at",
+            "is_approved",
+        ]
 
     def to_internal_value(self, data):
-        data["employment_type"] = data["employment_type"].title()
-        return super().to_internal_value(data)
-    
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        
-        # Handle skills
-        if "skills" in data and data["skills"]:
-            data["skills"] = [{"name":skill["name"].title()} for skill in data["skills"]]
-        
-        # Remove ID field
-        data.pop("id", None)
-        
-        # Format posted by field
-        if "posted_by" in data:
-            user = User.objects.filter(id=data["posted_by"]).first()
-            data["posted_by"] = user.email.title() if user else None
-        
-        # Capitalize and format text fields
-        text_fields = ["title", "company", "location"]
+        text_fields = ["employment_type", "status", "visibility", "schedule_choice"]
         for field in text_fields:
             if field in data and data[field]:
                 data[field] = data[field].title()
-        
-        # Capitalize description
-        if "description" in data and data["description"]:
-            data["description"] = data["description"].capitalize()
-        
-        # Format date fields
-        date_fields = ["created_at", "application_deadline"]
-        for field in date_fields:
-            if field in data and data[field]:
-                try:
-                    data[field] = datetime.fromisoformat(data[field]).strftime("%Y-%m-%d")
-                except (ValueError, TypeError):
-                    # Fallback to original value if parsing fails
-                    pass
+        return super().to_internal_value(data)
 
-        salary = Decimal(data.get("salary", 0))
-        if "salary" in data and data["salary"]:
-            data["salary"] = str(salary / 100)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("id", None)
+        data = {key: val for key, val in data.items() if val is not None}
+        self._format_text_field(data)
+        self._format_list_fields(data)
+        self._format_posted_by(data)
+        self._format_date_field(data)
+        self._format_salary(data)
+        self._clean_company(data)
+
         return data
-        
 
     def validate_salary(self, value):
-        return value*100
+        return value * 100
+
     
+    def create(self, validated_data:dict):
+            skills_data = validated_data.pop("skills", None)
+            tags_data = validated_data.pop("tags", None)
+            company = validated_data.pop("company", None)
+            validated_data.pop("schedule_choice", None)
+
+            if company is not None:
+
+                company_instance, created = Company.objects.get_or_create(
+                    name=company["name"].strip().lower(),
+                    location=company["location"].strip().lower(),
+                    description=company["description"].strip().lower(),
+                    website=company["website"].strip().lower(),
+                )
+
+                validated_data["company"] = company_instance
+                if "company_name" not in validated_data:
+                    validated_data["company_name"] = company["name"]
+
+            if "slug" not in validated_data:
+                validated_data["slug"] = self.context.get("slug")
+            if "posted_by" not in validated_data:
+                validated_data["posted_by"] = self.context.get("posted_by")
+            if "pubished_at" not in validated_data:
+                validated_data["published_at"] = self.context.get("published_at")
+
+            for field in ["job_title", "location", "job_description"]:
+                if field in validated_data and isinstance(validated_data[field], str):
+                    validated_data[field] = validated_data[field].strip().lower()
+
+            for date_field in [
+                "application_deadline",
+                "scheduled_publish_at",
+                "published_at",
+            ]:
+                if date_field in validated_data:
+                    date_value = validated_data[date_field]
+                    if isinstance(date_value, datetime) and date_value.strftime(
+                        "%Y-%m-%d"
+                    ) < now().strftime("%Y-%m-%d"):
+                        raise ValidationError(
+                            message={
+                                date_field: f"{date_field.replace('_', ' ').capitalize()} cannot be in the past. "
+                            },
+                            code=400,
+                        )
+            with transaction.atomic():
+                job_instance = Job.objects.create(**validated_data)
+
+                for data in skills_data:
+                    skill_name = data["name"].strip().lower()
+                    skill, created = Skill.objects.get_or_create(name=skill_name)
+                    JobSkill.objects.create(job=job_instance, skill=skill)
+
+                for data in tags_data:
+                    tag_name = data["name"].strip().lower()
+                    tag, created = Tag.objects.get_or_create(name=tag_name)
+                JobTag.objects.create(job=job_instance, tag=tag)
+
+            return job_instance
+
     def update(self, instance, validated_data):
+        # Extract related fields from the validated data
         skills_data = validated_data.pop("skills", None)
-        # salary = validated_data.pop("salary", None)
-        if skills_data is not None:
-            skills_instance = []
-            for skill in skills_data:
-                skill_instance, created = Skill.objects.get_or_create(name=skill["name"].strip().lower())
-                skills_instance.append(skill_instance)
-            instance.skills.set(skills_instance)
-        instance.salary = instance.salary
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
+        tags_data = validated_data.pop("tags", None)
+
+        # Convert relevant fields in validated_data to lowercase
+        for field in ["title", "company", "location", "description"]:
+            if field in validated_data:
+                validated_data[field] = validated_data[field].strip().lower()
+
+        # Create a new instance as a copy of the current instance
+        new_job_data = {
+            field.name: getattr(instance, field.name)
+            for field in instance._meta.fields
+            if field.name not in ["id", "slug", "created_at"]
+        }
+
+        # Update new_job_data with validated_data
+        new_job_data.update(validated_data)
+
+        # Update the versioning details
+        new_job_data["version"] = F("version") + 1
+        new_job_data["original_job"] = instance
+        new_job_data["slug"] = self.generate_slug(
+            new_job_data["title"],  # Using updated title
+            new_job_data["company"],  # Using updated company
+            new_job_data["location"],  # Using updated location
+            new_job_data["description"],  # Using updated description
+            instance.posted_by.id,
+            str(instance.slug),
+        )
+
+        # Create the new job instance
+        with transaction.atomic():
+            new_instance = Job.objects.create(**new_job_data)
+
+            # Update Many-to-Many fields (skills and tags)
+            if skills_data is not None:
+                skills_instances = []
+                for skill in skills_data:
+                    skill_instance, _ = Skill.objects.get_or_create(
+                        name=skill["name"].strip().lower()
+                    )
+                    JobSkill.objects.get_or_create(
+                        job=new_instance, skill=skill_instance
+                    )
+                    skills_instances.append(skill_instance)
+                new_instance.skills.set(skills_instances)
+
+            if tags_data is not None:
+                tags_instances = []
+                for tag in tags_data:
+                    tag_instance, _ = Tag.objects.get_or_create(
+                        name=tag["name"].strip().lower()
+                    )
+                    JobTag.objects.get_or_create(job=new_instance, tag=tag_instance)
+                    tags_instances.append(tag_instance)
+                new_instance.tags.set(tags_instances)
+
+            new_instance.save()
+
+        return new_instance
+
+
 class CreateBookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -117,3 +259,13 @@ class BookmarkSerializer(serializers.ModelSerializer):
         if data.get("note") is None:
             data.pop("note", None)
         return data
+
+
+class JobApproveSerializer(serializers.Serializer):
+    is_approved = serializers.BooleanField()
+    message = serializers.CharField(required=False)
+
+    def save(self, job_instance, **kwargs):
+        job_instance.is_approved = self.validated_data["is_approved"]
+        job_instance.save()
+        return job_instance

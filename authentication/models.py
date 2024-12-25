@@ -1,19 +1,19 @@
 from django.contrib.auth.models import (
-    BaseUserManager,
     AbstractBaseUser,
+    BaseUserManager,
     PermissionsMixin,
 )
 from django.db.models import (
-    Model,
-    CharField,
-    EmailField,
-    BooleanField,
-    DateTimeField,
-    OneToOneField,
     CASCADE,
+    BooleanField,
+    CharField,
+    DateTimeField,
+    EmailField,
+    Model,
+    OneToOneField,
 )
-from nanoid import generate
 from django.utils import timezone
+from nanoid import generate
 
 
 def generate_user_id():
@@ -24,7 +24,7 @@ class UserManager(BaseUserManager):
     """
     Regular user accounts are set up passwordless, only superusers require a password.
     """
-    
+
     def _create_user(self, **kwargs):
         email = kwargs.pop("email")
         password = kwargs.pop("password", None)

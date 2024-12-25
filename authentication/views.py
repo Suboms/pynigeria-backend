@@ -1,19 +1,21 @@
+from io import BytesIO
+
+import qrcode
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.renderers import BaseRenderer, BrowsableAPIRenderer
+from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
+
 from .serializers import (
-    RegisterSerializer,
     EmailVerifyBeginSerializer,
     EmailVerifyCompleteSerializer,
-    TOTPDeviceCreateSerializer,
     QRCodeDataSerializer,
+    RegisterSerializer,
+    TOTPDeviceCreateSerializer,
     VerifyTOTPDeviceSerializer,
 )
-from rest_framework.throttling import AnonRateThrottle
-from rest_framework.response import Response
-from rest_framework import status
-from drf_spectacular.utils import extend_schema
-import qrcode
-from io import BytesIO
-from rest_framework.renderers import BaseRenderer, BrowsableAPIRenderer
 
 
 class RegisterView(APIView):

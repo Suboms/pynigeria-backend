@@ -1,6 +1,5 @@
 from pynigeriaBackend.settings import *
 
-
 REST_FRAMEWORK = {
     "REST_FRAMEWORK_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",

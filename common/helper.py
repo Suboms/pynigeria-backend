@@ -2,6 +2,7 @@ import hashlib
 import random
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 
@@ -10,22 +11,62 @@ User = get_user_model()
 
 class Helper:
 
+    def generate_slug(self):
+        # Generate initial UUID
+        initial_uuid = uuid.uuid4()
+        
+        # Convert UUID to bytes and hash it
+        hash_obj = hashlib.sha256(str(initial_uuid).encode())
+        hash_bytes = hash_obj.digest()
+        
+        # Use the first 16 bytes of the hash to create a new UUID (version 3)
+        new_uuid = uuid.UUID(bytes=hash_bytes[:16], version=4)
+        
+        return new_uuid
+    
+    def _format_list_fields(self, data):
+        for field in ["skills", "tags"]:
+            if field in data and data[field]:
+                data[field] = [{"name": item["name"].title()} for item in data[field]]
 
-    def generate_slug(self, *args):
-        input_value = []
-        for arg in args:
-            if isinstance(arg, list):
-                for data in arg:
-                    if isinstance(data, dict) and "name" in data:
-                        input_value.append(data["name"].lower())
-            elif isinstance(arg, (str, int)):
-                input_value.append(str(arg).lower())
-            else:
-                input_value.append(arg)
+    def _format_posted_by(self, data):
+        if "posted_by" in data:
+            user = User.objects.filter(id=data["posted_by"]).first()
+            data["posted_by"] = user.email.title() if user else None
 
-        random.shuffle(input_value)
-        combined_input = " ".join(input_value).encode("utf-8")
-        seed = int(hashlib.sha256(combined_input).hexdigest(), 16)
-        random.seed(seed)
-        slug = uuid.UUID(int=random.getrandbits(128), version=4)
-        return slug
+    def _format_text_field(self, data):
+        for field in ["job_title", "job_description"]:
+            if field in data and data[field]:
+                data[field] = data[field].title()
+
+            if "job_description" in data and data["job_description"]:
+                data["job_description"] = data["job_description"].capitalize()
+
+    def _format_date_field(self, data):
+        for field in [
+            "created_at",
+            "application_deadline",
+            "scheduled_publish_at",
+            "published_at",
+        ]:
+            if field in data and data[field]:
+                try:
+                    data[field] = datetime.fromisoformat(data[field]).strftime(
+                        "%Y-%m-%d"
+                    )
+                except (ValueError, TypeError):
+                    # Fallback to original value if parsing fails
+                    pass
+    
+    def _format_salary(self, data):
+        salary = Decimal(data.get("salary", 0))
+        if "salary" in data and data["salary"]:
+            data["salary"] = str(salary / 100)
+
+    def _clean_company(self, data):
+        if "company" in data and data["company"] is not None:
+            data["company"].pop("id", None)
+            company_info = ["name", "location", "description"]
+            for info in company_info:
+                if info and data["company"][info]:
+                    data["company"][info] = data["company"][info].strip().title()
