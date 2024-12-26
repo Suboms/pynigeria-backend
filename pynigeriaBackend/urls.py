@@ -25,8 +25,9 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 from rest_framework.routers import DefaultRouter
-
 from job_listing_api.views import BookmarkViewset, JobViewset, JobApproveView
+from django.conf.urls.static import static
+from django.conf import settings
 
 router = DefaultRouter()
 
@@ -40,6 +41,11 @@ urlpatterns = [
     path(
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
+    ),
+    path("api/v1/jobs/", include("job.urls", namespace="job_posting_v1")),
+    path(
+      "api/v1/knowledge-base/",
+      include("knowledge_base_api.urls", namespace="knowledge_base_api_v1"),
     ),
     # Schema and documentation below
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

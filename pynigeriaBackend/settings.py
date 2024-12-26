@@ -14,7 +14,7 @@ else:
     exit(code=5000)
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY_VALUE")
+SECRET_KEY = os.getenv("SECRET_KEY_VALUE", default="default")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG_VALUE", "true").lower() == "true"
@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Third-Party packages
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
@@ -50,9 +52,18 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "django_otp",  # for 2FA
     "django_otp.plugins.otp_totp",
-    "authentication.apps.AuthenticationConfig",
-    "job_listing_api",
     "django_filters",
+    "authentication.apps.AuthenticationConfig",
+    "job_application_api.apps.JobApplicationApiConfig",
+    "job_listing_api.apps.JobApiConfig",
+    "job.apps.JobConfig",
+    "knowledge_base_api.apps.KnowledgeBaseApiConfig",
+    "tracking",
+    # For social auth
+    "oauth2_provider",
+    "social_django",
+    "drf_social_oauth2",
+    "taggit",
 ]
 
 MIDDLEWARE = [
@@ -157,7 +168,11 @@ REST_FRAMEWORK = {
         "user": "30/min",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    # "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
+    "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
+
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
 }
 
 SPECTACULAR_SETTINGS = {
