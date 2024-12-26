@@ -1,17 +1,22 @@
+from base64 import b32encode
+
+from django.conf import settings
+from django.core import signing
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+from django.utils.dateformat import format
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from pyotp import TOTP
 from rest_framework.serializers import (
-    ModelSerializer,
-    Serializer,
+    BooleanField,
     CharField,
     EmailField,
-    BooleanField,
-    ValidationError,
+    ModelSerializer,
+    Serializer,
     SerializerMethodField,
+    ValidationError,
 )
-from .models import User, OTPCode
-from django.db import IntegrityError, transaction
-from django.utils.dateformat import format
-from django.core import signing
-from django.utils import timezone
+
 from .email import EmailOTP
 from django.conf import settings
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -19,6 +24,7 @@ from pyotp import TOTP
 from base64 import b32encode
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import OTPCode, User
 
 
 class UserSerializer(ModelSerializer):

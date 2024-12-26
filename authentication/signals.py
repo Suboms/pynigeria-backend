@@ -1,7 +1,8 @@
 from django.db.models.signals import post_save
-from .models import User
 from django.dispatch import receiver
+
 from .email import EmailOTP
+from .models import User
 
 
 @receiver(post_save, sender=User)

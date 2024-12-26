@@ -1,12 +1,12 @@
-from rest_framework.test import APITransactionTestCase
-from .models import User, OTPCode
-from django.urls import reverse
-from django.utils import timezone
-from django.core import mail
-from django_otp.plugins.otp_totp.models import TOTPDevice
-from django_otp.plugins.otp_totp.models import TOTP
 from time import sleep
 
+from django.core import mail
+from django.urls import reverse
+from django.utils import timezone
+from django_otp.plugins.otp_totp.models import TOTP, TOTPDevice
+from rest_framework.test import APITransactionTestCase
+
+from .models import OTPCode, User
 
 """
 RUN COMMAND:

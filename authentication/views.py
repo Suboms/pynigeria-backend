@@ -1,10 +1,19 @@
+from io import BytesIO
+
+import qrcode
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.renderers import BaseRenderer, BrowsableAPIRenderer
+from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
+
 from .serializers import (
-    RegisterSerializer,
     EmailVerifyBeginSerializer,
     EmailVerifyCompleteSerializer,
-    TOTPDeviceCreateSerializer,
     QRCodeDataSerializer,
+    RegisterSerializer,
+    TOTPDeviceCreateSerializer,
     VerifyTOTPDeviceSerializer,
     LoginSerializer,
 )
@@ -23,7 +32,6 @@ from social_django.utils import psa
 from social_core.actions import do_auth
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from .social_authentication import complete_social_authentication
-
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer

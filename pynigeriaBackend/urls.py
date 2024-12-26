@@ -15,15 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import (
     SpectacularAPIView,
-    SpectacularSwaggerView,
     SpectacularRedocView,
+    SpectacularSwaggerView,
 )
-from job_listing_api.views import JobViewset, BookmarkViewset
+from rest_framework.routers import DefaultRouter
+from job_listing_api.views import BookmarkViewset, JobViewset, JobApproveView
 from django.conf.urls.static import static
 from django.conf import settings
 
@@ -32,9 +34,10 @@ router = DefaultRouter()
 router.register(r"job", JobViewset)
 router.register(r"bookmark", BookmarkViewset, "bookmark")
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", include(router.urls)),
+    path("api/", include(router.urls)),
     path(
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
@@ -56,6 +59,7 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
+    path("job/approve/<slug:slug>/", JobApproveView.as_view(), name="job-approve")
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

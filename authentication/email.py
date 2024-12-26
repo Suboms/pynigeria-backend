@@ -1,8 +1,9 @@
-from .models import OTPCode
-from pyotp import TOTP, random_base32
-from django.core import signing
 from django.conf import settings
+from django.core import signing
 from django.core.mail import send_mail
+from pyotp import TOTP, random_base32
+
+from .models import OTPCode
 
 
 class EmailOTP:

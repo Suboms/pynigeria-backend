@@ -1,27 +1,29 @@
 from django.db.models import Q
 from django.db.transaction import atomic
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
-from rest_framework.exceptions import AuthenticationFailed, MethodNotAllowed
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import (
-    IsAdminUser,
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
-)
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from common.filterset import JobFilterset
 from common.helper import Helper
-from job_listing_api.models import Bookmark, Job, JobSkill, Skill
+from job_listing_api.models import Bookmark, Job
 from job_listing_api.serializers import (
     BookmarkSerializer,
     CreateBookmarkSerializer,
     JobSerializer,
+    JobApproveSerializer,
 )
+
+from .permissions import IsJobPoster
+from .email import JobNotificationEmail
+from rest_framework.views import APIView
 
 # Create your views here.
 
@@ -30,6 +32,7 @@ class JobViewset(viewsets.ModelViewSet, Helper):
     queryset = Job.objects.all().order_by("-created_at")
     serializer_class = JobSerializer
     authentication_classes = [SessionAuthentication, JWTAuthentication]
+    permission_classes = [IsJobPoster]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = [
         "skills__name",
@@ -44,7 +47,7 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         "title",
         "company",
         "location",
-        "posted_by__username",
+        "posted_by__email",
         "employment_type",
         "salary",
     ]
@@ -55,34 +58,10 @@ class JobViewset(viewsets.ModelViewSet, Helper):
     def list(self, request, *args, **kwargs):
         raise MethodNotAllowed(method="get")
 
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if (
-            request.user.id == instance.posted_by.id
-            or request.user.is_superuser
-            or request.user.is_staff
-        ):
-            self.perform_destroy(instance)
-            return Response(status=204)
-        return Response(
-            {"detail": "You do not have sufficient permission to perform this action"},
-            status=400,
-        )
-
-    def get_permissions(self):
-        if self.action == "create" or "destroy":
-            permission_classes = [IsAuthenticated, IsAdminUser]
-        else:
-            permission_classes = [IsAuthenticatedOrReadOnly]
-        return [permission() for permission in permission_classes]
-
     def filter_queryset(self, queryset):
+        """
+        Apply search filters while maintaining queryset ordering.
+        """
         search_param = self.request.query_params.get("search")
 
         if search_param:
@@ -97,71 +76,33 @@ class JobViewset(viewsets.ModelViewSet, Helper):
                     | Q(company__icontains=term)
                     | Q(location__icontains=term)
                 )
-            queryset = self.queryset.filter(skill_filter).distinct()
+            queryset = queryset.filter(skill_filter).distinct().order_by("-created_at")
 
-        return super().filter_queryset(queryset)
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        modified_data = self.format_instance(serializer.data)
-        return Response(modified_data)
+        # Maintain order by `-created_at`
+        return queryset
 
     @atomic()
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        title = serializer.validated_data.get("title")
-        company = serializer.validated_data.get("company")
-        location = serializer.validated_data.get("location")
-        description = serializer.validated_data.get("description")
-        job_type = serializer.validated_data.get("employment_type")
-        salary = serializer.validated_data.get("salary")
-        deadline = serializer.validated_data.get("application_deadline")
+        slug = self.generate_slug()
         posted_by = self.request.user if self.request.user.is_authenticated else ""
-        skills_data = serializer.validated_data.get("skills", [])
-        slug = self.generate_slug(
-            title,
-            company,
-            location,
-            description,
-            str(posted_by.id),
-            skills_data,
-            job_type,
-            str(salary),
-            str(deadline),
+        published_at = timezone.now()
+
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "request": request,
+                "slug": slug,
+                "posted_by": posted_by,
+                "published_at": published_at,
+            },
         )
+        serializer.is_valid(raise_exception=True)
+        created_instance = serializer.create(serializer.validated_data)
+        response_data = self.get_serializer(
+            created_instance, context={"request": request}
+        ).data
 
-        print()
-
-        try:
-
-            job = Job(
-                title=title.lower(),
-                company=company.lower(),
-                location=location.lower(),
-                description=description.lower(),
-                posted_by=posted_by,
-                salary=salary,
-                employment_type=job_type,
-                application_deadline=deadline,
-                slug=slug,
-            )
-            job.save()
-
-            for data in skills_data:
-                skill_name = data["name"].strip().lower()
-                skill, created = Skill.objects.get_or_create(name=skill_name)
-                JobSkill.objects.create(job=job, skill=skill)
-
-            job_serializer = self.get_serializer(job)
-
-            return Response(job_serializer.data, status=201)
-        except Exception as e:
-            return Response(
-                {"detail": "An unexpected error occures", "error": str(e)},
-                status=500,
-            )
+        return Response(response_data, status=201)
 
     @action(
         methods=["get"],
@@ -169,24 +110,45 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         url_path="job-list",
         url_name="job-list",
     )
-    def jobs_list(self, request, *args, **kwargs):
+    def job_list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
-        try:
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                modified_response = self.format_list(serializer.data)
-                return self.get_paginated_response(modified_response)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-            serializer = self.get_serializer(queryset, many=True)
-            modified_response = self.format_list(serializer.data)
-            return Response(modified_response)
-        except Exception as runtime_error:
-            return Response(
-                {"error": "Runtime Error Occured", "detail": str(runtime_error)},
-                status=500,
-            )
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @atomic()
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_instance = serializer.update(instance, serializer.validated_data)
+        response_data = self.get_serializer(
+            updated_instance, context={"request": request}
+        ).data
+        return Response(response_data)
+
+    @atomic()
+    def partial_update(self, request, *args, **kwargs):
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
+    @atomic()
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=204)
 
 
 class BookmarkViewset(viewsets.ModelViewSet):
@@ -217,3 +179,26 @@ class BookmarkViewset(viewsets.ModelViewSet):
         bookmark = Bookmark(job=job, user=user)
         bookmark.save()
         return Response({"message": "Job bookmarked successfully"}, status=200)
+
+
+class JobApproveView(APIView):
+    serializer_class = JobApproveSerializer
+
+    # @atomic()
+    def post(self, request, slug):
+
+        job_instance = Job.objects.get(slug=slug)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated_job = serializer.save(job_instance=job_instance)
+        status = "approved" if updated_job.is_approved else "rejected"
+        message=serializer.data.get("message") if serializer.data.get("message") else None
+
+        JobNotificationEmail(updated_job).send_to_poster(updated_job.is_approved, message)
+        return Response(
+            {   "status":status.title(),
+                "message": message,
+                "is_approved": updated_job.is_approved,
+            },
+            status=200,
+        )

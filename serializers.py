@@ -61,9 +61,8 @@ class JobSerializer(serializers.ModelSerializer, Helper):
     )
     skills = SkillSerializer(many=True)
     tags = TagSerializer(many=True)
-    
+    company = CompanySerializer(required=False)
     employment_type = serializers.ChoiceField(choices=JobTypeChoice.choices)
-    company_name = serializers.CharField(required=False)
 
     class Meta:
         model = Job
@@ -76,9 +75,10 @@ class JobSerializer(serializers.ModelSerializer, Helper):
             "applications_count",
             "original_job",
             "status",
+            "company_name",
             "scheduled_publish_at",
             "is_approved",
-            "version"
+            "version",
         ]
 
     def to_internal_value(self, data):
@@ -97,66 +97,71 @@ class JobSerializer(serializers.ModelSerializer, Helper):
         self._format_posted_by(data)
         self._format_date_field(data)
         self._format_salary(data)
+        self._clean_company(data)
 
         return data
 
     def validate_salary(self, value):
         return value * 100
 
-    
-    def create(self, validated_data:dict):
-            skills_data = validated_data.pop("skills", None)
-            tags_data = validated_data.pop("tags", None)
-            company = validated_data.pop("company", None)
+    def create(self, validated_data: dict):
+        skills_data = validated_data.pop("skills", None)
+        tags_data = validated_data.pop("tags", None)
+        company = validated_data.pop("company", None)
 
-            if company is not None:
-                validated_data["company"]=company
-                validated_data["company_name"] = company.name.strip().lower()
-            else:
-                validated_data["company"]=company
-                validated_data["company_name"] = validated_data.get("company_name").strip().lower() if validated_data.get("company_name") else None
-            
-            if "slug" not in validated_data:
-                validated_data["slug"] = self.context.get("slug")
-            if "posted_by" not in validated_data:
-                validated_data["posted_by"] = self.context.get("posted_by")
-            if "pubished_at" not in validated_data:
-                validated_data["published_at"] = self.context.get("published_at")
+        if company is not None:
 
-            for field in ["job_title", "location", "job_description"]:
-                if field in validated_data and isinstance(validated_data[field], str):
-                    validated_data[field] = validated_data[field].strip().lower()
+            company_instance, created = Company.objects.get_or_create(
+                name=company["name"].strip().lower(),
+                location=company["location"].strip().lower(),
+                description=company["description"].strip().lower(),
+                website=company["website"].strip().lower(),
+            )
 
-            for date_field in [
-                "application_deadline",
-                "scheduled_publish_at",
-                "published_at",
-            ]:
-                if date_field in validated_data:
-                    date_value = validated_data[date_field]
-                    if isinstance(date_value, datetime) and date_value.strftime(
-                        "%Y-%m-%d"
-                    ) < now().strftime("%Y-%m-%d"):
-                        raise ValidationError(
-                            message={
-                                date_field: f"{date_field.replace('_', ' ').capitalize()} cannot be in the past. "
-                            },
-                            code=400,
-                        )
-            with transaction.atomic():
-                job_instance = Job.objects.create(**validated_data)
+            validated_data["company"] = company_instance
+            if "company_name" not in validated_data:
+                validated_data["company_name"] = company["name"]
 
-                for data in skills_data:
-                    skill_name = data["name"].strip().lower()
-                    skill, created = Skill.objects.get_or_create(name=skill_name)
-                    JobSkill.objects.create(job=job_instance, skill=skill)
+        if "slug" not in validated_data:
+            validated_data["slug"] = self.context.get("slug")
+        if "posted_by" not in validated_data:
+            validated_data["posted_by"] = self.context.get("posted_by")
+        if "pubished_at" not in validated_data:
+            validated_data["published_at"] = self.context.get("published_at")
 
-                for data in tags_data:
-                    tag_name = data["name"].strip().lower()
-                    tag, created = Tag.objects.get_or_create(name=tag_name)
-                    JobTag.objects.create(job=job_instance, tag=tag)
+        for field in ["job_title", "location", "job_description"]:
+            if field in validated_data and isinstance(validated_data[field], str):
+                validated_data[field] = validated_data[field].strip().lower()
 
-            return job_instance
+        for date_field in [
+            "application_deadline",
+            "scheduled_publish_at",
+            "published_at",
+        ]:
+            if date_field in validated_data:
+                date_value = validated_data[date_field]
+                if isinstance(date_value, datetime) and date_value.strftime(
+                    "%Y-%m-%d"
+                ) < now().strftime("%Y-%m-%d"):
+                    raise ValidationError(
+                        message={
+                            date_field: f"{date_field.replace('_', ' ').capitalize()} cannot be in the past. "
+                        },
+                        code=400,
+                    )
+        with transaction.atomic():
+            job_instance = Job.objects.create(**validated_data)
+            for data in skills_data:
+                skill_name = data["name"].strip().lower()
+                skill, created = Skill.objects.get_or_create(name=skill_name)
+                JobSkill.objects.create(job=job_instance, skill=skill)
+
+            for data in tags_data:
+                tag_name = data["name"].strip().lower()
+                tag, created = Tag.objects.get_or_create(name=tag_name)
+            JobTag.objects.create(job=job_instance, tag=tag)
+
+        return job_instance
 
     def update(self, instance, validated_data):
         # Extract related fields from the validated data
@@ -166,10 +171,14 @@ class JobSerializer(serializers.ModelSerializer, Helper):
 
         # Convert relevant fields in validated_data to lowercase
         for field in [
-            "job_title"
+            "job_title",
+            "company__name",
+            "company__location",
+            "company__description",
         ]:
 
             if field in validated_data:
+                print(validated_data[field])
                 validated_data[field] = validated_data[field].strip().lower()
 
         # Create a new instance as a copy of the current instance
@@ -181,12 +190,6 @@ class JobSerializer(serializers.ModelSerializer, Helper):
 
         # Update new_job_data with validated_data
         new_job_data.update(validated_data)
-
-        if company is not None:
-            new_job_data["company_name"] = company.name.strip().lower()
-        else:
-            new_job_data["company_name"] = validated_data["company_name"].strip().lower()
-        
 
         # Update the versioning details
         new_job_data["version"] = instance.version + 1
@@ -261,5 +264,11 @@ class JobApproveSerializer(serializers.Serializer):
 
     def save(self, job_instance, **kwargs):
         job_instance.is_approved = self.validated_data["is_approved"]
+        if job_instance.is_approved is True:
+            job_instance.status = "Published"
+            job_instance.published_at = now()
+        else:
+            job_instance.status = "Draft"
+            job_instance.published_at = None
         job_instance.save()
         return job_instance
