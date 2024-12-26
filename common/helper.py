@@ -62,11 +62,3 @@ class Helper:
         salary = Decimal(data.get("salary", 0))
         if "salary" in data and data["salary"]:
             data["salary"] = str(salary / 100)
-
-    def _clean_company(self, data):
-        if "company" in data and data["company"] is not None:
-            data["company"].pop("id", None)
-            company_info = ["name", "location", "description"]
-            for info in company_info:
-                if info and data["company"][info]:
-                    data["company"][info] = data["company"][info].strip().title()

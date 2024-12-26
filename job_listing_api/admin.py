@@ -1,6 +1,6 @@
 from django.contrib.admin import ModelAdmin, register
 
-from .models import Bookmark, Job, JobSkill, JobTag, Skill, Tag, Company
+from .models import Bookmark, Job, JobSkill, JobTag, Skill, Tag, Company, BookmarkFolder
 
 
 # Register your models here.
@@ -8,10 +8,10 @@ from .models import Bookmark, Job, JobSkill, JobTag, Skill, Tag, Company
 class JobAdmin(ModelAdmin):
     list_display = (
         "job_title",
-        "company__name",
+        "company_name",
         "created_at",
     )
-    list_filter = ("job_title", "company__name", "employment_type", "salary")
+    list_filter = ("job_title", "company_name", "employment_type", "salary")
     readonly_fields = ["created_at"]
 
 
@@ -22,20 +22,23 @@ class SkillAdmin(ModelAdmin):
 
 @register(Bookmark)
 class BookmarkAdmin(ModelAdmin):
-    list_filter = [
-        "user__email",
-        "job__company__name",
-        "job__company__location",
-        "job__employment_type",
-    ]
-    list_display = [
-        "user__email",
-        "job__company__name",
-        "job__company__location",
-        "job__employment_type",
-    ]
+    pass
+    # list_filter = [
+    #     "user__email",
+    #     "job__company__name",
+    #     "job__company__location",
+    #     "job__employment_type",
+    # ]
+    # list_display = [
+    #     "user__email",
+    #     "job__company__name",
+    #     "job__company__location",
+    #     "job__employment_type",
+    # ]
 
-
+@register(BookmarkFolder)
+class BookmarkFolderAdmin(ModelAdmin):
+    pass
 @register(JobSkill)
 class JobSkillAdmin(ModelAdmin):
     pass

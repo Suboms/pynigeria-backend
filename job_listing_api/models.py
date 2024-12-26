@@ -25,7 +25,7 @@ class JobVisibility(models.TextChoices):
     PUBLIC = "Public"
     FEATURED = "Featured"
 
-# class ScheduleDateChoice(models.D)
+
 class Skill(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
@@ -49,8 +49,11 @@ class Company(models.Model):
     def __str__(self) -> str:
         return self.name
 
+
 class Job(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, to_field="name")
+    company = models.ForeignKey(
+        Company, on_delete=models.SET_NULL, null=True, to_field="name"
+    )
     company_name = models.CharField(max_length=255)
     job_title = models.CharField(max_length=255)
     job_description = models.TextField()
@@ -74,7 +77,6 @@ class Job(models.Model):
 
     # Scheduling and expiry
     published_at = models.DateTimeField(null=True, blank=True)
-    scheduled_publish_at = models.DateTimeField(null=True, blank=True)
     application_deadline = models.DateTimeField(null=True)
 
     employment_type = models.CharField(
@@ -105,7 +107,12 @@ class Job(models.Model):
     is_approved = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.job_title} at {self.company}"
+        return f"{self.job_title} at {self.company_name}"
+    
+    def save(self, *args, **kwargs):
+        if self.company_name:
+            self.company_name = self.company_name.strip().lower()
+        super().save(*args, **kwargs)
 
     class Meta:
         indexes = [
@@ -123,7 +130,7 @@ class JobSkill(models.Model):
         unique_together = ("job", "skill")
 
     def __str__(self):
-        return f"{self.job.title} - {self.skill.name}"
+        return f"{self.job.job_title} - {self.skill.name}"
 
 
 class JobTag(models.Model):
@@ -137,19 +144,69 @@ class JobTag(models.Model):
         return f"{self.job.job_title} - {self.tag.name}"
 
 
+class JobBookmarkStatus(models.TextChoices):
+    SAVED = "SAVED", "Saved"
+    APPLIED = "APPLIED", "Applied"
+    INTERVIEWING = "INTERVIEWING", "Interviewing"
+    REJECTED = "REJECTED", "Rejected"
+    OFFERED = "OFFERED", "Offered"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class BookmarkFolder(models.Model):
+    """Optional folder organization for job bookmarks"""
+
+    name = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bookmark_folders",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Bookmark(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bookmarks"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="job_bookmarks"
     )
-    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="bookmarked_by")
-    note = models.TextField(null=True)
+    job = models.ForeignKey(
+        Job, on_delete=models.CASCADE, related_name="bookmarks"  # Your Job model
+    )
+    folder = models.ForeignKey(
+        BookmarkFolder,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bookmarks",
+    )
+
+    # Bookmark metadata
+    status = models.CharField(
+        max_length=20,
+        choices=JobBookmarkStatus.choices,
+        default=JobBookmarkStatus.SAVED,
+    )
+    notes = models.TextField(blank=True, null=True)
+    reminder_date = models.DateTimeField(null=True, blank=True)
+
+    # Tracking
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_viewed = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ["user", "job"]  # Prevent duplicate bookmarks
+        indexes = [
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.job.job_title}"
 
     class Meta:
         unique_together = ("user", "job")
 
     def __str__(self):
         return f"{self.user.email} bookmarked this job"
-
-
-# i want the viewset to be a model viewset and perform create in my view not serializer ad als you did not take the original_job into consideration which i put there so that if

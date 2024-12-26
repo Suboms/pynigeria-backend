@@ -2,3 +2,4 @@ Fix the issue of company when a company is not created
 setup a notification system to notify admin when a job has been posted
 Dont forget t handle posting date and choices
 will have to change the url setting for the mail
+tracking and metric
