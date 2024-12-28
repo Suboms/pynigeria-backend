@@ -32,10 +32,12 @@ from social_django.utils import psa
 from social_core.actions import do_auth
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from .social_authentication import complete_social_authentication
+from rest_framework.permissions import AllowAny
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_register", tags=["auth_v1"])
     def post(self, request):
@@ -53,6 +55,7 @@ class VerifyEmailBeginView(APIView):
 
     serializer_class = EmailVerifyBeginSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_verify_email_begin", tags=["auth_v1"])
     def post(self, request):
@@ -66,6 +69,7 @@ class VerifyEmailBeginView(APIView):
 class VerifyEmailCompleteView(APIView):
     serializer_class = EmailVerifyCompleteSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_verify_email_complete", tags=["auth_v1"])
     def post(self, request, token):
@@ -79,6 +83,7 @@ class VerifyEmailCompleteView(APIView):
 class TOTPDeviceCreateView(APIView):
     serializer_class = TOTPDeviceCreateSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_create_totp_device", tags=["auth_v1"])
     def post(self, request):
@@ -92,6 +97,7 @@ class TOTPDeviceCreateView(APIView):
 class GetQRCodeView(APIView):
     serializer_class = QRCodeDataSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     class PNGRenderer(BaseRenderer):
         media_type = "image/png"
@@ -152,6 +158,7 @@ class GetQRCodeView(APIView):
 class VerifyTOTPDeviceView(APIView):
     serializer_class = VerifyTOTPDeviceSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_verify_totp_device", tags=["auth_v1"])
     def post(self, request):
@@ -165,6 +172,7 @@ class VerifyTOTPDeviceView(APIView):
 class LoginView(APIView):
     serializer_class = LoginSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_login", tags=["auth_v1"])
     def post(self, request):
@@ -182,6 +190,7 @@ class SocialAuthenticationBeginView(APIView):
     """This view initiates social oauth authentication"""
 
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         operation_id="v1_social_auth_begin",
@@ -200,6 +209,7 @@ class SocialAuthenticationCompleteView(APIView):
     """This view completes social oauth authentication"""
 
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         operation_id="v1_social_auth_complete",
