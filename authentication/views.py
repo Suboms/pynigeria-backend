@@ -32,10 +32,13 @@ from social_django.utils import psa
 from social_core.actions import do_auth
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from .social_authentication import complete_social_authentication
+from django.middleware.csrf import get_token
+from rest_framework.permissions import AllowAny
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
     throttle_classes = [AnonRateThrottle]
+    permission_classes = [AllowAny]
 
     @extend_schema(operation_id="v1_register", tags=["auth_v1"])
     def post(self, request):
@@ -209,3 +212,10 @@ class SocialAuthenticationCompleteView(APIView):
     )
     def get(self, request, backend):
         return complete_social_authentication(request, backend)
+
+class CsrfTokenView(APIView):
+    permission_classes = [AllowAny]
+    def get(self,request):
+        #Genrate and get CSRF token
+        csrf_token = get_token(request)
+        return Response(dict(csrfToken=csrf_token))

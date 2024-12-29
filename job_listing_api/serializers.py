@@ -232,7 +232,7 @@ class CreateBookmarkSerializer(serializers.ModelSerializer):
         model = Bookmark
         fields = (
             "job",
-            "note",
+            "notes",
         )
 
 
@@ -246,7 +246,7 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bookmark
-        fields = ("job_title", "job_company", "job_description", "job_instance", "note")
+        fields = ("job_title", "job_company", "job_description", "job_instance", "notes")
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

@@ -10,6 +10,7 @@ from .views import (
     LoginView,
     SocialAuthenticationBeginView,
     SocialAuthenticationCompleteView,
+    CsrfTokenView
 )
 from social_django.urls import extra
 
@@ -35,4 +36,5 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path(f"social/begin/<str:backend>{extra}", SocialAuthenticationBeginView.as_view(), name="social-begin"),
     path("social/complete/<str:backend>/", SocialAuthenticationCompleteView.as_view(), name="social-complete"),
+    path("csrfToken/",CsrfTokenView.as_view())
 ]
