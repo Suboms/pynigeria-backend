@@ -1,10 +1,11 @@
+from datetime import datetime
+
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from django.contrib.auth import get_user_model
-from datetime import datetime
 User = get_user_model()
 
 
@@ -55,10 +56,10 @@ class JobNotificationEmail:
             "email_title": f"Your Job Has Been {job_status.capitalize()}",
             "user_name": self.job_instance.posted_by.email,
             "email_message": f"Your job titled {self.job_instance.job_title.title()} has been {job_status}. ",
-            "additional_message":message,
+            "additional_message": message,
             "contact_support": f"to contact support",
             "job_link": f"{settings.CURRENT_ORIGIN}/admin/job_listing_api/job/{self.job_instance.id}/",
-            "year": datetime.now().strftime("%Y")
+            "year": datetime.now().strftime("%Y"),
         }
         self.__send_to_email(
             f"Job {job_status.capitalize()}",

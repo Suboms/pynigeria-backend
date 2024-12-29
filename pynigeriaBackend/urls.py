@@ -24,28 +24,17 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework.routers import DefaultRouter
-from job_listing_api.views import BookmarkViewset, JobViewset, JobApproveView
-from django.conf.urls.static import static
-from django.conf import settings
-
-router = DefaultRouter()
-
-router.register(r"job", JobViewset)
-router.register(r"bookmark", BookmarkViewset, "bookmark")
-
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include(router.urls)),
+    path("api/v1/", include("job_listing_api.urls")),
     path(
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
-    path("api/v1/jobs/", include("job.urls", namespace="job_posting_v1")),
     path(
-      "api/v1/knowledge-base/",
-      include("knowledge_base_api.urls", namespace="knowledge_base_api_v1"),
+        "api/v1/knowledge-base/",
+        include("knowledge_base_api.urls", namespace="knowledge_base_api_v1"),
     ),
     # Schema and documentation below
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -59,7 +48,6 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-    path("job/approve/<slug:slug>/", JobApproveView.as_view(), name="job-approve")
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

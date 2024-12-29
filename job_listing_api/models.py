@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from taggit.managers import TaggableManager
 
 # Create your models here.
 
@@ -26,15 +27,23 @@ class JobVisibility(models.TextChoices):
     FEATURED = "Featured"
 
 
+class SkillLevel(models.TextChoices):
+    BEGINNER = "Beginner"
+    INTERMIDIATE = "Intermidiate"
+    ADVANCED = "Advanced"
+
+class JobBookmarkStatus(models.TextChoices):
+    SAVED = "SAVED", "Saved"
+    APPLIED = "APPLIED", "Applied"
+    INTERVIEWING = "INTERVIEWING", "Interviewing"
+    REJECTED = "REJECTED", "Rejected"
+    OFFERED = "OFFERED", "Offered"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
 class Skill(models.Model):
     name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class Tag(models.Model):
-    name = models.CharField(max_length=255, unique=True)
+    
 
     def __str__(self) -> str:
         return self.name
@@ -64,9 +73,7 @@ class Job(models.Model):
         through_fields=("job", "skill"),
         db_index=True,
     )
-    tags = models.ManyToManyField(
-        Tag, through="JobTag", through_fields=("job", "tag"), db_index=True
-    )
+    tags = TaggableManager()
     # fields for enhanced functionality
     status = models.CharField(
         max_length=20, choices=JobStatus.choices, default=JobStatus.DRAFT
@@ -108,7 +115,7 @@ class Job(models.Model):
 
     def __str__(self):
         return f"{self.job_title} at {self.company_name}"
-    
+
     def save(self, *args, **kwargs):
         if self.company_name:
             self.company_name = self.company_name.strip().lower()
@@ -121,10 +128,13 @@ class Job(models.Model):
 
 
 class JobSkill(models.Model):
-    job = models.ForeignKey(Job, on_delete=models.CASCADE)
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='job_skills')
     skill = models.ForeignKey(
         Skill, on_delete=models.CASCADE, to_field="name"
     )  # References the `name` field of Skill
+    skill_level = models.CharField(
+        max_length=255, choices=SkillLevel.choices, default=SkillLevel.BEGINNER
+    )
 
     class Meta:
         unique_together = ("job", "skill")
@@ -133,24 +143,7 @@ class JobSkill(models.Model):
         return f"{self.job.job_title} - {self.skill.name}"
 
 
-class JobTag(models.Model):
-    job = models.ForeignKey(Job, on_delete=models.CASCADE)
-    tag = models.ForeignKey(Tag, on_delete=models.CASCADE, to_field="name")
 
-    class Meta:
-        unique_together = ("job", "tag")
-
-    def __str__(self):
-        return f"{self.job.job_title} - {self.tag.name}"
-
-
-class JobBookmarkStatus(models.TextChoices):
-    SAVED = "SAVED", "Saved"
-    APPLIED = "APPLIED", "Applied"
-    INTERVIEWING = "INTERVIEWING", "Interviewing"
-    REJECTED = "REJECTED", "Rejected"
-    OFFERED = "OFFERED", "Offered"
-    ARCHIVED = "ARCHIVED", "Archived"
 
 
 class BookmarkFolder(models.Model):
@@ -164,6 +157,13 @@ class BookmarkFolder(models.Model):
         related_name="bookmark_folders",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "name"]
+        indexes = [models.Index(fields=["name"])]
+
+    def __str__(self):
+        return self.name
 
 
 class Bookmark(models.Model):
@@ -201,12 +201,6 @@ class Bookmark(models.Model):
             models.Index(fields=["user", "status"]),
             models.Index(fields=["created_at"]),
         ]
-
-    def __str__(self):
-        return f"{self.user.username} - {self.job.job_title}"
-
-    class Meta:
-        unique_together = ("user", "job")
 
     def __str__(self):
         return f"{self.user.email} bookmarked this job"

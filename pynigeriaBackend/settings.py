@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-Party packages
     "corsheaders",
     "rest_framework",
@@ -53,11 +52,9 @@ INSTALLED_APPS = [
     "django_otp",  # for 2FA
     "django_otp.plugins.otp_totp",
     "django_filters",
-    "authentication.apps.AuthenticationConfig",
-    "job_application_api.apps.JobApplicationApiConfig",
-    "job_listing_api.apps.JobApiConfig",
-    "job.apps.JobConfig",
-    "knowledge_base_api.apps.KnowledgeBaseApiConfig",
+    "authentication",
+    "job_listing_api",
+    "knowledge_base_api",
     "tracking",
     # For social auth
     "oauth2_provider",
@@ -169,7 +166,6 @@ REST_FRAMEWORK = {
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
-
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -196,3 +192,4 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD_VALUE")
 
 # 2FA TOTP settings
 OTP_TOTP_ISSUER = "pynigeria"
+TAGGIT_CASE_INSENSITIVE = True

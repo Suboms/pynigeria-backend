@@ -9,21 +9,21 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from common.filterset import JobFilterset
 from common.helper import Helper
-from job_listing_api.models import Bookmark, Job
-from job_listing_api.serializers import (
-    BookmarkSerializer,
-    CreateBookmarkSerializer,
-    JobSerializer,
-    JobApproveSerializer,
-)
 
-from .permissions import IsJobPoster
 from .email import JobNotificationEmail
-from rest_framework.views import APIView
+from .models import Bookmark, BookmarkFolder, Job
+from .permissions import IsJobPoster
+from .serializers import (
+    BookmarkFolderSerializer,
+    BookmarkSerializer,
+    JobApproveSerializer,
+    JobSerializer,
+)
 
 # Create your views here.
 
@@ -33,24 +33,24 @@ class JobViewset(viewsets.ModelViewSet, Helper):
     serializer_class = JobSerializer
     authentication_classes = [SessionAuthentication, JWTAuthentication]
     permission_classes = [IsJobPoster]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = [
-        "skills__name",
-        "title",
-        "company",
-        "location",
-        "employment_type",
-        "salary",
-    ]
-    ordering_fields = [
-        "skills__name",
-        "title",
-        "company",
-        "location",
-        "posted_by__email",
-        "employment_type",
-        "salary",
-    ]
+    # filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    # search_fields = [
+    #     "skills__name",
+    #     "title",
+    #     "company",
+    #     "location",
+    #     "employment_type",
+    #     "salary",
+    # ]
+    # ordering_fields = [
+    #     "skills__name",
+    #     "title",
+    #     "company",
+    #     "location",
+    #     "posted_by__email",
+    #     "employment_type",
+    #     "salary",
+    # ]
     ordering = ["title"]
     filterset_class = JobFilterset
     lookup_field = "slug"
@@ -85,15 +85,13 @@ class JobViewset(viewsets.ModelViewSet, Helper):
     def create(self, request, *args, **kwargs):
         slug = self.generate_slug()
         posted_by = self.request.user if self.request.user.is_authenticated else ""
-        published_at = timezone.now()
 
-        serializer = self.serializer_class(
+        serializer = self.get_serializer(
             data=request.data,
             context={
                 "request": request,
                 "slug": slug,
                 "posted_by": posted_by,
-                "published_at": published_at,
             },
         )
         serializer.is_valid(raise_exception=True)
@@ -151,18 +149,61 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         return Response(status=204)
 
 
+class JobApproveView(APIView):
+    serializer_class = JobApproveSerializer
+
+    @atomic()
+    def post(self, request, slug):
+
+        job_instance = Job.objects.get(slug=slug)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated_job = serializer.save(job_instance=job_instance)
+        status = "approved" if updated_job.is_approved else "rejected"
+        message = (
+            serializer.data.get("message") if serializer.data.get("message") else None
+        )
+
+        JobNotificationEmail(updated_job).send_to_poster(
+            updated_job.is_approved, message
+        )
+        return Response(
+            {
+                "status": status.title(),
+                "message": message,
+                "is_approved": updated_job.is_approved,
+            },
+            status=200,
+        )
+
+
+class BookmarkFolderViewset(viewsets.ModelViewSet):
+    queryset = BookmarkFolder.objects.all().order_by("-created_at")
+    serializer_class = BookmarkFolderSerializer
+
+    @atomic()
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        folder_instance = serializer.create(serializer.validated_data)
+        response_data = self.get_serializer(
+            folder_instance, context={"request": request}
+        ).data
+        return Response(response_data)
+
+
 class BookmarkViewset(viewsets.ModelViewSet):
-
+    queryset = Bookmark.objects.all()
     permission_classes = [IsAuthenticated]
+    serializer_class = BookmarkSerializer
 
-    def get_queryset(self):
-        # User-specific bookmarks
-        return Bookmark.objects.filter(user=self.request.user)
+    # def get_queryset(self):
+    #     # User-specific bookmarks
+    #     return Bookmark.objects.filter(user=self.request.user)
 
-    def get_serializer_class(self):
-        if self.action == "create":
-            return CreateBookmarkSerializer
-        return BookmarkSerializer
+    
 
     def partial_update(self, request, *args, **kwargs):
         raise MethodNotAllowed(method="patch")
@@ -172,33 +213,12 @@ class BookmarkViewset(viewsets.ModelViewSet):
 
     @atomic()
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        job = serializer.validated_data.get("job")
-        user = request.user
-        bookmark = Bookmark(job=job, user=user)
-        bookmark.save()
-        return Response({"message": "Job bookmarked successfully"}, status=200)
-
-
-class JobApproveView(APIView):
-    serializer_class = JobApproveSerializer
-
-    # @atomic()
-    def post(self, request, slug):
-
-        job_instance = Job.objects.get(slug=slug)
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        updated_job = serializer.save(job_instance=job_instance)
-        status = "approved" if updated_job.is_approved else "rejected"
-        message=serializer.data.get("message") if serializer.data.get("message") else None
-
-        JobNotificationEmail(updated_job).send_to_poster(updated_job.is_approved, message)
-        return Response(
-            {   "status":status.title(),
-                "message": message,
-                "is_approved": updated_job.is_approved,
-            },
-            status=200,
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
         )
+        serializer.is_valid(raise_exception=True)
+        bookmark_instance = serializer.create(serializer.validated_data)
+        response_data = self.get_serializer(
+            bookmark_instance, context={"request": request}
+        ).data
+        return Response(response_data)

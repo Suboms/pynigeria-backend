@@ -4,16 +4,16 @@ from job_listing_api.models import Job, JobTypeChoice
 
 
 class JobFilterset(django_filters.FilterSet):
-    title = django_filters.CharFilter(
-        field_name="title",
+    job_title = django_filters.CharFilter(
+        field_name="job_title",
         lookup_expr="icontains",
     )
-    company = django_filters.CharFilter(
-        field_name="company",
+    company_name = django_filters.CharFilter(
+        field_name="company_name",
         lookup_expr="icontains",
     )
     location = django_filters.CharFilter(
-        field_name="location",
+        field_name="company__location",
         lookup_expr="icontains",
     )
     skills = django_filters.CharFilter(
@@ -31,9 +31,9 @@ class JobFilterset(django_filters.FilterSet):
     class Meta:
         model = Job
         fields = [
-            "title",
-            "company",
-            "location",
+            "job_title",
+            "company_name",
+            "company__location",
             "skills__name",
             "posted_by__id",
             "created_at",

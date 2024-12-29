@@ -1,6 +1,6 @@
 from django.contrib.admin import ModelAdmin, register
 
-from .models import Bookmark, Job, JobSkill, JobTag, Skill, Tag, Company, BookmarkFolder
+from .models import Bookmark, BookmarkFolder, Company, Job, JobSkill, Skill
 
 
 # Register your models here.
@@ -36,22 +36,20 @@ class BookmarkAdmin(ModelAdmin):
     #     "job__employment_type",
     # ]
 
+
 @register(BookmarkFolder)
 class BookmarkFolderAdmin(ModelAdmin):
     pass
+
+
 @register(JobSkill)
 class JobSkillAdmin(ModelAdmin):
     pass
 
 
-@register(JobTag)
-class JobTagAdmin(ModelAdmin):
-    pass
-
-
-@register(Tag)
-class TagAdmin(ModelAdmin):
-    pass
+# @register(JobTag)
+# class JobTagAdmin(ModelAdmin):
+#     pass
 
 
 @register(Company)

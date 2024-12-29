@@ -1,5 +1,5 @@
-from social_core.pipeline.user import USER_FIELDS
 from rest_framework.exceptions import AuthenticationFailed
+from social_core.pipeline.user import USER_FIELDS
 
 
 def custom_create_user(backend, details, user=None, *args, **kwargs):
