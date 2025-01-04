@@ -23,15 +23,16 @@ User = get_user_model()
 
 
 class SkillSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(validators=[])
+    name = serializers.CharField(validators=[], required=True)
 
     class Meta:
         model = Skill
-        fields = "__all__"
+        exclude = ("id",)
 
 
 class JobSkillSerializer(serializers.ModelSerializer):
     skill = SkillSerializer()
+    skill_level = serializers.CharField(required=True)
 
     class Meta:
         model = JobSkill
@@ -39,6 +40,7 @@ class JobSkillSerializer(serializers.ModelSerializer):
             "id",
             "job",
         )
+
     def to_internal_value(self, data):
         text_fields = ["skill_level"]
         for field in text_fields:
@@ -46,15 +48,18 @@ class JobSkillSerializer(serializers.ModelSerializer):
                 data[field] = data[field].title()
         return super().to_internal_value(data)
 
+
 class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
     job = serializers.HyperlinkedIdentityField(
         view_name="job-detail", lookup_field="slug"
     )
-    job_skills = JobSkillSerializer(many=True)
-    tags = TagListSerializerField()
-
+    job_skills = JobSkillSerializer(many=True, required=True)
+    tags = TagListSerializerField(read_only=True)
     employment_type = serializers.ChoiceField(choices=JobTypeChoice.choices)
     company_name = serializers.CharField(required=False)
+    original_job = serializers.HyperlinkedRelatedField(
+        view_name="job-detail", lookup_field="slug", read_only=True
+    )
 
     class Meta:
         model = Job
@@ -70,6 +75,7 @@ class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
             "scheduled_publish_at",
             "is_approved",
             "version",
+            # "tags",
         ]
 
     def to_internal_value(self, data):
@@ -83,9 +89,9 @@ class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
         data = super().to_representation(instance)
         data.pop("id", None)
         data.pop("skills", None)
-        self._format_text_field(data)
-        self._format_list_fields(data)
-        self._format_posted_by(data)
+        # self._format_text_field(data)
+        # self._format_list_fields(data)
+        self._format_posted_by("posted_by", data)
         self._format_date_field(data)
         self._format_salary(data)
 
@@ -124,12 +130,24 @@ class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
                 if attrs.get("company_name")
                 else None
             )
+        job_skills = attrs.get("job_skills", [])
+        if not job_skills:
+            raise ValidationError({"job_skills": "Job skills cannot be empty."})
+
+        for skill in job_skills:
+            if not skill.get("skill"):
+                raise ValidationError(
+                    {"job_skills": "Each job skill must have a 'skill' field."}
+                )
+            if not skill.get("skill_level"):
+                raise ValidationError(
+                    {"job_skills": "Each job skill must have a 'skill_level' field."}
+                )
 
         return super().validate(attrs)
 
     def create(self, validated_data):
         skills_data = validated_data.pop("job_skills", None)
-        tags_data = validated_data.pop("tags", None)
 
         if "slug" not in validated_data:
             validated_data["slug"] = self.context.get("slug")
@@ -142,17 +160,21 @@ class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
             job_instance = Job.objects.create(**validated_data)
 
             for data in skills_data:
-                skill_data = data['skill']
-                skill_instance, created = Skill.objects.get_or_create(name=skill_data['name'].strip().lower())
-            
+                skill_data = data["skill"]
+                skill_instance, created = Skill.objects.get_or_create(
+                    name=skill_data["name"].strip().lower()
+                )
+
                 # Create JobSkill instance and associate with Job
                 JobSkill.objects.create(
                     job=job_instance,
                     skill=skill_instance,
-                    skill_level=data['skill_level']
+                    skill_level=data["skill_level"],
                 )
-            if tags_data is not None:
-                job_instance.tags.add(*[data.strip().lower() for data in tags_data])
+            if skills_data is not None:
+                job_instance.tags.add(
+                    *[data["skill"]["name"].strip().lower() for data in skills_data]
+                )
 
         return job_instance
 
@@ -190,13 +212,17 @@ class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
                             name=items["skill"]["name"].strip().lower()
                         )
                     JobSkill.objects.get_or_create(
-                        job=new_instance, skill=skill_instance, skill_level=items['skill_level']
+                        job=new_instance,
+                        skill=skill_instance,
+                        skill_level=items["skill_level"],
                     )
                     skills_instances.append(skill_instance)
                 new_instance.skills.set(skills_instances)
 
-            if tags_data is not None:
-                new_instance.tags.add(*[data.strip().lower() for data in tags_data])
+            if skills_data is not None:
+                new_instance.tags.add(
+                    *[data["skill"]["name"].strip().lower() for data in skills_data]
+                )
 
             new_instance.save()
 
@@ -213,18 +239,32 @@ class JobApproveSerializer(serializers.Serializer):
         return job_instance
 
 
-class BookmarkFolderSerializer(serializers.ModelSerializer):
+class BookmarkFolderSerializer(serializers.ModelSerializer, Helper):
+    folder_instance = serializers.HyperlinkedIdentityField(
+        view_name="bookmarkfolder-detail"
+    )
+
     class Meta:
         model = BookmarkFolder
-        exclude = ("user",)
+        exclude = ["created_at", "updated_at"]
+        read_only_fields = ["user"]
 
     def validate(self, attrs):
-        if "name" in attrs:
-            attrs["name"] = attrs["name"].strip().lower()
+        if "folder_name" in attrs:
+            attrs["folder_name"] = attrs["folder_name"].strip().lower()
 
-        if "description" in attrs:
-            attrs["description"] = attrs["description"].strip().lower()
+        if "folder_description" in attrs:
+            attrs["folder_description"] = attrs["folder_description"].strip().lower()
         return super().validate(attrs)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("id", None)
+        self._format_posted_by("user", data)
+        self._format_date_field(data)
+        # self._format_text_field(data)
+
+        return data
 
     def create(self, validated_data: dict):
 
@@ -237,11 +277,20 @@ class BookmarkFolderSerializer(serializers.ModelSerializer):
             )
         return folder_instance
 
+    def update(self, instance, validated_data:dict):
+        with transaction.atomic():
+            for attrs, value in validated_data.items():
+                setattr(instance, attrs, value)
+            instance.save()
+        return instance
 
-class BookmarkSerializer(serializers.ModelSerializer):
+
+class BookmarkSerializer(serializers.ModelSerializer, Helper):
+    bookmark = serializers.HyperlinkedIdentityField(view_name="bookmark-detail")
     job_instance = serializers.HyperlinkedRelatedField(
-        view_name="job-detail", lookup_field="slug",source="job", read_only=True
+        view_name="job-detail", lookup_field="slug", source="job", read_only=True
     )
+
     class OverrideQuery(serializers.HyperlinkedRelatedField):
 
         def get_queryset(self):
@@ -249,13 +298,24 @@ class BookmarkSerializer(serializers.ModelSerializer):
             if request and hasattr(request, "user"):
                 return BookmarkFolder.objects.filter(user=request.user)
             return BookmarkFolder.objects.none()
-    
-    folder = OverrideQuery(view_name="bookmarkfolder-detail", lookup_field="pk")
-        
+
+    folder_instance = OverrideQuery(
+        view_name="bookmarkfolder-detail",
+        source="folder",
+        lookup_field="pk",
+        read_only=True,
+    )
 
     class Meta:
         model = Bookmark
-        fields = "__all__"
+        exclude = ["created_at", "updated_at"]
+        read_only_fields = ["user"]
+
+    def validate(self, attrs):
+
+        if "notes" in attrs and attrs["notes"]:
+            attrs["notes"] = attrs["notes"].strip().lower()
+        return super().validate(attrs)
 
     def create(self, validated_data: dict):
 
@@ -267,15 +327,29 @@ class BookmarkSerializer(serializers.ModelSerializer):
                 **validated_data
             )
         return bookmark_instance
-
-
     
+    def update(self, instance, validated_data:dict):
+        with transaction.atomic():
+            for attrs, value in validated_data.items():
+                setattr(instance, attrs, value)
+            instance.save()
+        return instance
 
-    # def to_representation(self, instance):
-    #     data = super().to_representation(instance)
-    #     if data.get("note") is None:
-    #         data.pop("note", None)
-    #     return data
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("id", None)
+        self._format_posted_by("user", data)
+        self._format_date_field(data)
+        # self._format_text_field(data)
+        # self._format_job_instance("job", data, self.context.get("request"))
+        return data
+
+    def to_internal_value(self, data):
+        text_fields = ["status"]
+        for field in text_fields:
+            if field in data and data[field]:
+                data[field] = data[field].title()
+        return super().to_internal_value(data)
 
 
 class CompanySerializer(serializers.ModelSerializer):

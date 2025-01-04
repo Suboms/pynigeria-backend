@@ -7,36 +7,44 @@ class JobFilterset(django_filters.FilterSet):
     job_title = django_filters.CharFilter(
         field_name="job_title",
         lookup_expr="icontains",
+        label="Job Title"
     )
-    company_name = django_filters.CharFilter(
-        field_name="company_name",
+    tags__name = django_filters.CharFilter(
+        field_name="tags__name",
         lookup_expr="icontains",
+        label="Tag",
     )
-    location = django_filters.CharFilter(
-        field_name="company__location",
-        lookup_expr="icontains",
-    )
-    skills = django_filters.CharFilter(
-        field_name="skills__name",
-        lookup_expr="iexact",
-    )
-    posted_by = django_filters.CharFilter(
-        field_name="posted_by__id",
-        lookup_expr="iexact",
-    )
-    created_at = django_filters.DateFromToRangeFilter(field_name="created_at")
-    employment_type = django_filters.ChoiceFilter(choices=JobTypeChoice.choices)
-    salary = django_filters.NumberFilter(field_name="salary", lookup_expr="icontains")
+    
+    employment_type = django_filters.ChoiceFilter(choices=JobTypeChoice.choices, label="Job Type")
+
+    class SalaryRangeFilter(django_filters.RangeFilter):
+        def filter(self, qs, value):
+            """
+            Override the RangeFilter to convert salary range from naira to kobo.
+            """
+            if value:
+                # Convert both bounds of the range from naira to kobo
+                salary_min = value.start * 100 if value.start is not None else None
+                salary_max = value.stop * 100 if value.stop is not None else None
+
+                # Apply the range filter using the converted values
+                if salary_min is not None and salary_max is not None:
+                    return qs.filter(**{f"{self.field_name}__gte": salary_min, f"{self.field_name}__lte": salary_max})
+                elif salary_min is not None:
+                    return qs.filter(**{f"{self.field_name}__gte": salary_min})
+                elif salary_max is not None:
+                    return qs.filter(**{f"{self.field_name}__lte": salary_max})
+            return qs
+    salary = SalaryRangeFilter(field_name="salary")
+
 
     class Meta:
         model = Job
         fields = [
             "job_title",
-            "company_name",
-            "company__location",
-            "skills__name",
-            "posted_by__id",
-            "created_at",
-            "salary",
+            "tags__name",
             "employment_type",
+            "salary"
         ]
+
+    

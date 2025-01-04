@@ -165,9 +165,9 @@ REST_FRAMEWORK = {
         "user": "30/min",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
+    # "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        # "rest_framework.permissions.IsAuthenticated",
     ],
 }
 

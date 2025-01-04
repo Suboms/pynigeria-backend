@@ -32,21 +32,17 @@ class SkillLevel(models.TextChoices):
     INTERMIDIATE = "Intermidiate"
     ADVANCED = "Advanced"
 
+
 class JobBookmarkStatus(models.TextChoices):
-    SAVED = "SAVED", "Saved"
-    APPLIED = "APPLIED", "Applied"
-    INTERVIEWING = "INTERVIEWING", "Interviewing"
-    REJECTED = "REJECTED", "Rejected"
-    OFFERED = "OFFERED", "Offered"
-    ARCHIVED = "ARCHIVED", "Archived"
+    SAVED = "Saved"
+    APPLIED = "Applied"
+    INTERVIEWING = "Interviewing"
+    REJECTED = "Rejected"
+    OFFERED = "Offered"
+    ARCHIVED = "Archived"
 
 
-class Skill(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    
 
-    def __str__(self) -> str:
-        return self.name
 
 
 class Company(models.Model):
@@ -58,7 +54,11 @@ class Company(models.Model):
     def __str__(self) -> str:
         return self.name
 
+class Skill(models.Model):
+    name = models.CharField(max_length=255, unique=True)
 
+    def __str__(self) -> str:
+        return self.name
 class Job(models.Model):
     company = models.ForeignKey(
         Company, on_delete=models.SET_NULL, null=True, to_field="name"
@@ -128,7 +128,7 @@ class Job(models.Model):
 
 
 class JobSkill(models.Model):
-    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='job_skills')
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="job_skills")
     skill = models.ForeignKey(
         Skill, on_delete=models.CASCADE, to_field="name"
     )  # References the `name` field of Skill
@@ -143,27 +143,25 @@ class JobSkill(models.Model):
         return f"{self.job.job_title} - {self.skill.name}"
 
 
-
-
-
 class BookmarkFolder(models.Model):
     """Optional folder organization for job bookmarks"""
 
-    name = models.CharField(max_length=255)
-    description = models.TextField(null=True, blank=True)
+    folder_name = models.CharField(max_length=255)
+    folder_description = models.TextField(null=True, blank=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="bookmark_folders",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ["user", "name"]
-        indexes = [models.Index(fields=["name"])]
+        unique_together = ["user", "folder_name"]
+        indexes = [models.Index(fields=["folder_name"])]
 
     def __str__(self):
-        return self.name
+        return self.folder_name
 
 
 class Bookmark(models.Model):
@@ -188,12 +186,10 @@ class Bookmark(models.Model):
         default=JobBookmarkStatus.SAVED,
     )
     notes = models.TextField(blank=True, null=True)
-    reminder_date = models.DateTimeField(null=True, blank=True)
 
     # Tracking
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    last_viewed = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ["user", "job"]  # Prevent duplicate bookmarks

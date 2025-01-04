@@ -10,6 +10,7 @@ class JobAdmin(ModelAdmin):
         "job_title",
         "company_name",
         "created_at",
+        "slug"
     )
     list_filter = ("job_title", "company_name", "employment_type", "salary")
     readonly_fields = ["created_at"]
