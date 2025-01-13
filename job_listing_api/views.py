@@ -7,23 +7,23 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from common.filterset import JobFilterset
 from common.helper import Helper
-from job_listing_api.models import Bookmark, Job
-from job_listing_api.serializers import (
-    BookmarkSerializer,
-    CreateBookmarkSerializer,
-    JobSerializer,
-    JobApproveSerializer,
-)
 
-from .permissions import IsJobPoster
 from .email import JobNotificationEmail
-from rest_framework.views import APIView
+from .models import Bookmark, BookmarkFolder, Job
+from .permissions import IsJobPoster, HasObjectPermission
+from .serializers import (
+    BookmarkFolderSerializer,
+    BookmarkSerializer,
+    JobApproveSerializer,
+    JobSerializer,
+)
 
 # Create your views here.
 
@@ -35,23 +35,17 @@ class JobViewset(viewsets.ModelViewSet, Helper):
     permission_classes = [IsJobPoster]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = [
-        "skills__name",
-        "title",
-        "company",
-        "location",
+        "job_title",
         "employment_type",
-        "salary",
+        "tags__name",
     ]
     ordering_fields = [
-        "skills__name",
-        "title",
-        "company",
-        "location",
-        "posted_by__email",
+        "job_title",
         "employment_type",
+        "tags__name",
         "salary",
     ]
-    ordering = ["title"]
+    ordering = ["job_title"]
     filterset_class = JobFilterset
     lookup_field = "slug"
 
@@ -60,7 +54,7 @@ class JobViewset(viewsets.ModelViewSet, Helper):
 
     def filter_queryset(self, queryset):
         """
-        Apply search filters while maintaining queryset ordering.
+        Apply additional search filters while maintaining queryset ordering.
         """
         search_param = self.request.query_params.get("search")
 
@@ -71,29 +65,26 @@ class JobViewset(viewsets.ModelViewSet, Helper):
             skill_filter = Q()
             for term in search_terms:
                 skill_filter |= (
-                    Q(skills__name__iexact=term)
-                    | Q(title__icontains=term)
-                    | Q(company__icontains=term)
-                    | Q(location__icontains=term)
+                    Q(job_title__icontains=term)
+                    | Q(employment_type__icontains=term)
+                    | Q(tags__name__icontains=term)
+                    | Q(job_skills__skill_level__icontains=term)
                 )
-            queryset = queryset.filter(skill_filter).distinct().order_by("-created_at")
+            queryset = queryset.filter(skill_filter).distinct()
 
-        # Maintain order by `-created_at`
-        return queryset
+        return super().filter_queryset(queryset)
 
     @atomic()
     def create(self, request, *args, **kwargs):
         slug = self.generate_slug()
         posted_by = self.request.user if self.request.user.is_authenticated else ""
-        published_at = timezone.now()
 
-        serializer = self.serializer_class(
+        serializer = self.get_serializer(
             data=request.data,
             context={
                 "request": request,
                 "slug": slug,
                 "posted_by": posted_by,
-                "published_at": published_at,
             },
         )
         serializer.is_valid(raise_exception=True)
@@ -151,40 +142,11 @@ class JobViewset(viewsets.ModelViewSet, Helper):
         return Response(status=204)
 
 
-class BookmarkViewset(viewsets.ModelViewSet):
-
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        # User-specific bookmarks
-        return Bookmark.objects.filter(user=self.request.user)
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return CreateBookmarkSerializer
-        return BookmarkSerializer
-
-    def partial_update(self, request, *args, **kwargs):
-        raise MethodNotAllowed(method="patch")
-
-    def update(self, request, *args, **kwargs):
-        raise MethodNotAllowed(method="put")
-
-    @atomic()
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        job = serializer.validated_data.get("job")
-        user = request.user
-        bookmark = Bookmark(job=job, user=user)
-        bookmark.save()
-        return Response({"message": "Job bookmarked successfully"}, status=200)
-
-
 class JobApproveView(APIView):
     serializer_class = JobApproveSerializer
+    permission_classes = [IsAdminUser]
 
-    # @atomic()
+    @atomic()
     def post(self, request, slug):
 
         job_instance = Job.objects.get(slug=slug)
@@ -192,13 +154,116 @@ class JobApproveView(APIView):
         serializer.is_valid(raise_exception=True)
         updated_job = serializer.save(job_instance=job_instance)
         status = "approved" if updated_job.is_approved else "rejected"
-        message=serializer.data.get("message") if serializer.data.get("message") else None
+        message = (
+            serializer.data.get("message") if serializer.data.get("message") else None
+        )
 
-        JobNotificationEmail(updated_job).send_to_poster(updated_job.is_approved, message)
+        JobNotificationEmail(updated_job).send_to_poster(
+            updated_job.is_approved, message
+        )
         return Response(
-            {   "status":status.title(),
+            {
+                "status": status.title(),
                 "message": message,
                 "is_approved": updated_job.is_approved,
             },
             status=200,
         )
+
+
+class BookmarkFolderViewset(viewsets.ModelViewSet):
+    queryset = BookmarkFolder.objects.all().order_by("-created_at")
+    serializer_class = BookmarkFolderSerializer
+    permission_classes = [HasObjectPermission]
+
+    def get_queryset(self):
+        if self.action == "list" or self.action == "retrieve":
+            return BookmarkFolder.objects.filter(user=self.request.user)
+        else:
+            return self.serializer_class
+
+    @atomic()
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        folder_instance = serializer.create(serializer.validated_data)
+        response_data = self.get_serializer(
+            folder_instance, context={"request": request}
+        ).data
+        return Response(response_data)
+
+    @atomic()
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_instance = serializer.update(instance, serializer.validated_data)
+        response_data = self.get_serializer(
+            updated_instance, context={"request": request}
+        ).data
+        return Response(response_data)
+
+    @atomic()
+    def partial_update(self, request, *args, **kwargs):
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
+    @atomic()
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=204)
+
+
+class BookmarkViewset(viewsets.ModelViewSet):
+    queryset = Bookmark.objects.all()
+    permission_classes = [HasObjectPermission]
+    serializer_class = BookmarkSerializer
+
+    def get_queryset(self):
+        return Bookmark.objects.filter(user=self.request.user)
+
+    @atomic()
+    def partial_update(self, request, *args, **kwargs):
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
+    @atomic()
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=204)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @atomic()
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_instance = serializer.update(instance, serializer.validated_data)
+        response_data = self.get_serializer(
+            updated_instance, context={"request": request}
+        ).data
+        return Response(response_data)
+
+    @atomic()
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        bookmark_instance = serializer.create(serializer.validated_data)
+        response_data = self.get_serializer(
+            bookmark_instance, context={"request": request}
+        ).data
+        return Response(response_data)

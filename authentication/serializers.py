@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.dateformat import format
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from pyotp import TOTP
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.serializers import (
     BooleanField,
     CharField,
@@ -16,14 +17,9 @@ from rest_framework.serializers import (
     SerializerMethodField,
     ValidationError,
 )
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .email import EmailOTP
-from django.conf import settings
-from django_otp.plugins.otp_totp.models import TOTPDevice
-from pyotp import TOTP
-from base64 import b32encode
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.tokens import RefreshToken
 from .models import OTPCode, User
 
 
@@ -33,7 +29,13 @@ class UserSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "email", "is_email_verified", "created")
-        read_only_fields = ("id", "email", "is_email_verified", "is_2fa_enabled", "created")
+        read_only_fields = (
+            "id",
+            "email",
+            "is_email_verified",
+            "is_2fa_enabled",
+            "created",
+        )
 
     def get_created(self, obj):
         return format(obj.created, "M d, Y. P")
@@ -246,31 +248,40 @@ class VerifyTOTPDeviceSerializer(Serializer):
         return result
 
 
-        
 class LoginSerializer(Serializer):
     email = EmailField()
     otp_code = CharField(write_only=True)
     id = CharField(read_only=True)
     access = CharField(read_only=True)
     refresh = CharField(read_only=True)
-    
+
     def validate(self, data):
         self.email = data.get("email")
-        user = User.objects.filter(email=self.email).first() 
+        user = User.objects.filter(email=self.email).first()
         if not user:
-            raise ValidationError({"error": "No account is associated with this email."})
+            raise ValidationError(
+                {"error": "No account is associated with this email."}
+            )
         if not user.is_2fa_enabled:
             raise AuthenticationFailed("2FA setup must be completed before login.")
-        self.device = TOTPDevice.objects.select_related("user").filter(user__email=self.email, confirmed=True).first()
+        self.device = (
+            TOTPDevice.objects.select_related("user")
+            .filter(user__email=self.email, confirmed=True)
+            .first()
+        )
         if not self.device:
-            raise ValidationError(detail={"error": "No confirmed TOTP device is associated with this email."})
+            raise ValidationError(
+                detail={
+                    "error": "No confirmed TOTP device is associated with this email."
+                }
+            )
         self.otp_code = data.get("otp_code")
         secret_key = b32encode(self.device.bin_key).decode()
         totp = TOTP(secret_key)
         if not totp.verify(self.otp_code):
             raise ValidationError(detail={"error": "Invalid TOTP token detected."})
         return data
-    
+
     def save(self, **kwargs):
         refresh_token = RefreshToken.for_user(self.device.user)
         access_token = refresh_token.access_token
@@ -281,6 +292,6 @@ class LoginSerializer(Serializer):
         validated_data["access"] = str(access_token)
         validated_data["refresh"] = str(refresh_token)
         return validated_data
-    
+
     def to_representation(self, instance):
         return instance

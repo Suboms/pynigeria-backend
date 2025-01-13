@@ -1,39 +1,33 @@
 from io import BytesIO
 
 import qrcode
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.shortcuts import redirect
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.renderers import BaseRenderer, BrowsableAPIRenderer
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
+from social_core.actions import do_auth
+from social_django.utils import psa
 
 from .serializers import (
     EmailVerifyBeginSerializer,
     EmailVerifyCompleteSerializer,
+    LoginSerializer,
     QRCodeDataSerializer,
     RegisterSerializer,
     TOTPDeviceCreateSerializer,
     VerifyTOTPDeviceSerializer,
-    LoginSerializer,
 )
-from rest_framework.throttling import AnonRateThrottle
-from rest_framework.response import Response
-from rest_framework import status
-from drf_spectacular.utils import extend_schema
-import qrcode
-from io import BytesIO
-from rest_framework.renderers import BaseRenderer, BrowsableAPIRenderer
-from django.shortcuts import redirect
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.cache import never_cache
-from social_django.utils import psa
-from social_core.actions import do_auth
-from django.contrib.auth import REDIRECT_FIELD_NAME
 from .social_authentication import complete_social_authentication
 from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny
+
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer

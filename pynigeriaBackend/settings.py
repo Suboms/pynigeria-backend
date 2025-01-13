@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-Party packages
     "corsheaders",
     "rest_framework",
@@ -170,8 +169,7 @@ REST_FRAMEWORK = {
         "user": "30/min",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
-
+    # "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
         # "rest_framework.permissions.AllowAny"
@@ -199,5 +197,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD_VALUE")
 
 # 2FA TOTP settings
 OTP_TOTP_ISSUER = "pynigeria"
-
+TAGGIT_CASE_INSENSITIVE = True
 CORS_ALLOW_ALL_ORIGINS = True
+

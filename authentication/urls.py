@@ -1,18 +1,18 @@
 from django.urls import path
+from social_django.urls import extra
 
 from .views import (
     GetQRCodeView,
+    LoginView,
     RegisterView,
+    SocialAuthenticationBeginView,
+    SocialAuthenticationCompleteView,
     TOTPDeviceCreateView,
     VerifyEmailBeginView,
     VerifyEmailCompleteView,
     VerifyTOTPDeviceView,
-    LoginView,
-    SocialAuthenticationBeginView,
-    SocialAuthenticationCompleteView,
     CsrfTokenView
 )
-from social_django.urls import extra
 
 app_name = "authentication"
 
