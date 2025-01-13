@@ -1,0 +1,1367 @@
+openapi: 3.0.3
+info:
+  title: PYNIGERIA BACKEND API
+  version: 1.0.0
+paths:
+  /api/bookmark/:
+    get:
+      operationId: api_bookmark_list
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bookmark'
+          description: ''
+    post:
+      operationId: api_bookmark_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookmark'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateBookmark'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateBookmark'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBookmark'
+          description: ''
+  /api/bookmark/{id}/:
+    get:
+      operationId: api_bookmark_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bookmark.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+    put:
+      operationId: api_bookmark_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bookmark.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Bookmark'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Bookmark'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Bookmark'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+    patch:
+      operationId: api_bookmark_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bookmark.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBookmark'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBookmark'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBookmark'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+    delete:
+      operationId: api_bookmark_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bookmark.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/job/:
+    get:
+      operationId: api_job_list
+      parameters:
+      - in: query
+        name: company
+        schema:
+          type: string
+      - in: query
+        name: created_at_after
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: created_at_before
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: employment_type
+        schema:
+          type: string
+          enum:
+          - Contract
+          - Full Time
+          - Internship
+          - Part Time
+          - Voluntary
+        description: |-
+          * `Full Time` - Full Time
+          * `Part Time` - Part Time
+          * `Contract` - Contract
+          * `Internship` - Internship
+          * `Voluntary` - Voluntary
+      - in: query
+        name: location
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: posted_by
+        schema:
+          type: string
+      - in: query
+        name: posted_by__id
+        schema:
+          type: string
+      - in: query
+        name: salary
+        schema:
+          type: number
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: skills
+        schema:
+          type: string
+      - in: query
+        name: skills__name
+        schema:
+          type: string
+      - in: query
+        name: title
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+          description: ''
+    post:
+      operationId: api_job_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Job'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Job'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/job/{slug}/:
+    get:
+      operationId: api_job_retrieve
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+    put:
+      operationId: api_job_update
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Job'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Job'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+    patch:
+      operationId: api_job_partial_update
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedJob'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedJob'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedJob'
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+    delete:
+      operationId: api_job_destroy
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/job/job-list/:
+    get:
+      operationId: api_job_job_list_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/authentication/login/:
+    post:
+      operationId: v1_login
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Login'
+          description: ''
+  /api/v1/authentication/register/:
+    post:
+      operationId: v1_register
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Register'
+          description: ''
+  /api/v1/authentication/social/begin/{backend}/:
+    get:
+      operationId: v1_social_auth_begin
+      description: This view initiates social oauth authentication
+      parameters:
+      - in: path
+        name: backend
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth_v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/authentication/social/complete/{backend}/:
+    get:
+      operationId: v1_social_auth_complete
+      description: This view completes social oauth authentication
+      parameters:
+      - in: path
+        name: backend
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth_v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/authentication/totp-device/create/:
+    post:
+      operationId: v1_create_totp_device
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPDeviceCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TOTPDeviceCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TOTPDeviceCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TOTPDeviceCreate'
+          description: ''
+  /api/v1/authentication/totp-device/qrcode/:
+    post:
+      operationId: v1_get_qrcode
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QRCodeData'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QRCodeData'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QRCodeData'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCodeData'
+          description: ''
+  /api/v1/authentication/totp-device/verify/:
+    post:
+      operationId: v1_verify_totp_device
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTOTPDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyTOTPDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyTOTPDevice'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTOTPDevice'
+          description: ''
+  /api/v1/authentication/verify-email/begin/:
+    post:
+      operationId: v1_verify_email_begin
+      description: This view exists to initiate email verification manually if the
+        auto option fails.
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyBegin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyBegin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyBegin'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailVerifyBegin'
+          description: ''
+  /api/v1/authentication/verify-email/complete/{token}/:
+    post:
+      operationId: v1_verify_email_complete
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth_v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyComplete'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyComplete'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyComplete'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailVerifyComplete'
+          description: ''
+  /api/v1/knowledge-base/api/uploads/:
+    get:
+      operationId: api_v1_knowledge_base_api_uploads_list
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserUpload'
+          description: ''
+    post:
+      operationId: api_v1_knowledge_base_api_uploads_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpload'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserUpload'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpload'
+          description: ''
+  /api/v1/knowledge-base/api/uploads/{id}/:
+    get:
+      operationId: api_v1_knowledge_base_api_uploads_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpload'
+          description: ''
+    put:
+      operationId: api_v1_knowledge_base_api_uploads_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpload'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserUpload'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpload'
+          description: ''
+    patch:
+      operationId: api_v1_knowledge_base_api_uploads_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpload'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpload'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpload'
+          description: ''
+    delete:
+      operationId: api_v1_knowledge_base_api_uploads_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/knowledge-base/api/uploads/{id}/status/:
+    patch:
+      operationId: api_v1_knowledge_base_api_uploads_status_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/knowledge-base/api/uploads/mine/:
+    get:
+      operationId: api_v1_knowledge_base_api_uploads_mine_list
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserUpload'
+          description: ''
+  /api/v1/knowledge-base/api/uploads/published/:
+    get:
+      operationId: api_v1_knowledge_base_api_uploads_published_list
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserUpload'
+          description: ''
+  /job/approve/{slug}/:
+    post:
+      operationId: job_approve_create
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - job
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobApprove'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobApprove'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobApprove'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApprove'
+          description: ''
+components:
+  schemas:
+    Bookmark:
+      type: object
+      properties:
+        job_title:
+          type: string
+          readOnly: true
+        job_company:
+          type: string
+          readOnly: true
+        job_description:
+          type: string
+          readOnly: true
+        job_instance:
+          type: string
+          format: uri
+          readOnly: true
+        notes:
+          type: string
+          nullable: true
+      required:
+      - job_company
+      - job_description
+      - job_instance
+      - job_title
+    CreateBookmark:
+      type: object
+      properties:
+        job:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+      required:
+      - job
+    EmailVerifyBegin:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          writeOnly: true
+        message:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - message
+    EmailVerifyComplete:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        is_email_verified:
+          type: boolean
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - id
+      - is_email_verified
+      - message
+    EmploymentTypeEnum:
+      enum:
+      - Full Time
+      - Part Time
+      - Contract
+      - Internship
+      - Voluntary
+      type: string
+      description: |-
+        * `Full Time` - Full Time
+        * `Part Time` - Part Time
+        * `Contract` - Contract
+        * `Internship` - Internship
+        * `Voluntary` - Voluntary
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job:
+          type: string
+          format: uri
+          readOnly: true
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        employment_type:
+          $ref: '#/components/schemas/EmploymentTypeEnum'
+        company_name:
+          type: string
+        job_title:
+          type: string
+          maxLength: 255
+        job_description:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JobStatusEnum'
+          readOnly: true
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        application_deadline:
+          type: string
+          format: date-time
+          nullable: true
+        salary:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,15}(?:\.\d{0,2})?$
+          nullable: true
+        views_count:
+          type: integer
+          readOnly: true
+        applications_count:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_approved:
+          type: boolean
+          readOnly: true
+        company:
+          type: string
+          nullable: true
+        posted_by:
+          type: string
+          readOnly: true
+        original_job:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - applications_count
+      - created_at
+      - employment_type
+      - id
+      - is_approved
+      - job
+      - job_description
+      - job_title
+      - original_job
+      - posted_by
+      - published_at
+      - skills
+      - status
+      - tags
+      - version
+      - views_count
+    JobApprove:
+      type: object
+      properties:
+        is_approved:
+          type: boolean
+        message:
+          type: string
+      required:
+      - is_approved
+    JobStatusEnum:
+      enum:
+      - Draft
+      - Published
+      - Archived
+      - Expired
+      type: string
+      description: |-
+        * `Draft` - Draft
+        * `Published` - Published
+        * `Archived` - Archived
+        * `Expired` - Expired
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        otp_code:
+          type: string
+          writeOnly: true
+        id:
+          type: string
+          readOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - email
+      - id
+      - otp_code
+      - refresh
+    PatchedBookmark:
+      type: object
+      properties:
+        job_title:
+          type: string
+          readOnly: true
+        job_company:
+          type: string
+          readOnly: true
+        job_description:
+          type: string
+          readOnly: true
+        job_instance:
+          type: string
+          format: uri
+          readOnly: true
+        notes:
+          type: string
+          nullable: true
+    PatchedJob:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job:
+          type: string
+          format: uri
+          readOnly: true
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        employment_type:
+          $ref: '#/components/schemas/EmploymentTypeEnum'
+        company_name:
+          type: string
+        job_title:
+          type: string
+          maxLength: 255
+        job_description:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JobStatusEnum'
+          readOnly: true
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        application_deadline:
+          type: string
+          format: date-time
+          nullable: true
+        salary:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,15}(?:\.\d{0,2})?$
+          nullable: true
+        views_count:
+          type: integer
+          readOnly: true
+        applications_count:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_approved:
+          type: boolean
+          readOnly: true
+        company:
+          type: string
+          nullable: true
+        posted_by:
+          type: string
+          readOnly: true
+        original_job:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedUserUpload:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        upload_type:
+          $ref: '#/components/schemas/UploadTypeEnum'
+        file:
+          type: string
+          format: uri
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/UserUploadStatusEnum'
+          readOnly: true
+        tags:
+          type: string
+          readOnly: true
+    QRCodeData:
+      type: object
+      properties:
+        otpauth_url:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+      required:
+      - email
+      - otpauth_url
+    Register:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+        is_email_verified:
+          type: boolean
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - id
+      - is_email_verified
+      - message
+    Skill:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+      required:
+      - id
+      - name
+    TOTPDeviceCreate:
+      type: object
+      properties:
+        user:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+        confirmed:
+          type: boolean
+          readOnly: true
+          default: false
+      required:
+      - confirmed
+      - email
+      - name
+      - user
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+      required:
+      - id
+      - name
+    UploadTypeEnum:
+      enum:
+      - PDF
+      - EBOOK
+      - IMAGE
+      type: string
+      description: |-
+        * `PDF` - PDF Document
+        * `EBOOK` - Ebook
+        * `IMAGE` - image
+    UserUpload:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        upload_type:
+          $ref: '#/components/schemas/UploadTypeEnum'
+        file:
+          type: string
+          format: uri
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/UserUploadStatusEnum'
+          readOnly: true
+        tags:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - file
+      - id
+      - published_at
+      - status
+      - tags
+      - upload_type
+    UserUploadStatusEnum:
+      enum:
+      - PENDING
+      - APPROVED
+      - REJECTED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `APPROVED` - Approved
+        * `REJECTED` - Rejected
+    VerifyTOTPDevice:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        otp_token:
+          type: string
+          writeOnly: true
+        user:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        confirmed:
+          type: boolean
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+      required:
+      - confirmed
+      - email
+      - message
+      - name
+      - otp_token
+      - user
+    VisibilityEnum:
+      enum:
+      - Private
+      - Internal
+      - Public
+      - Featured
+      type: string
+      description: |-
+        * `Private` - Private
+        * `Internal` - Internal
+        * `Public` - Public
+        * `Featured` - Featured
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

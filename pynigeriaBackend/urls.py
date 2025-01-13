@@ -32,6 +32,7 @@ urlpatterns = [
         "api/v1/authentication/",
         include("authentication.urls", namespace="authentication_v1"),
     ),
+    # path("api/v1/jobs/", include("job_listing_api.urls", namespace="job_posting_v1")),
     path(
         "api/v1/knowledge-base/",
         include("knowledge_base_api.urls", namespace="knowledge_base_api_v1"),

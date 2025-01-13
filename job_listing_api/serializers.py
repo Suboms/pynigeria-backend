@@ -252,7 +252,6 @@ class BookmarkFolderSerializer(serializers.ModelSerializer, Helper):
     def validate(self, attrs):
         if "folder_name" in attrs:
             attrs["folder_name"] = attrs["folder_name"].strip().lower()
-
         if "folder_description" in attrs:
             attrs["folder_description"] = attrs["folder_description"].strip().lower()
         return super().validate(attrs)

@@ -19,20 +19,21 @@ SECRET_KEY = os.getenv("SECRET_KEY_VALUE", default="default")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG_VALUE", "true").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(
-    ","
-)  # Use commas to seperate muliple host values
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(",")  # Use commas to seperate muliple host values
 
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS_VALUE", "http://127.0.0.1"
-).split(
-    ","
-)  # Same comma-value-seperation as above
+# CSRF_TRUSTED_ORIGINS = os.getenv(
+#     "CSRF_TRUSTED_ORIGINS_VALUE", "http://127.0.0.1"
+# ).split(
+#     ","
+# )  # Same comma-value-seperation as above
 
 # SECURITY WARNING: don't run with debug turned on in production!
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+CSRF_COOKIE_HTTPONLY = False
 DEBUG = True
 
-# ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -145,6 +146,9 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
@@ -167,7 +171,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # "EXCEPTION_HANDLER": "pynigeriaBackend.exception_handler.pynigeria_exception_handler",
     "DEFAULT_PERMISSION_CLASSES": [
-        # "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.IsAuthenticated",
+        # "rest_framework.permissions.AllowAny"
     ],
 }
 
@@ -193,3 +198,5 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD_VALUE")
 # 2FA TOTP settings
 OTP_TOTP_ISSUER = "pynigeria"
 TAGGIT_CASE_INSENSITIVE = True
+CORS_ALLOW_ALL_ORIGINS = True
+
