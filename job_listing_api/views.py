@@ -267,3 +267,64 @@ class BookmarkViewset(viewsets.ModelViewSet):
             bookmark_instance, context={"request": request}
         ).data
         return Response(response_data)
+
+
+
+
+
+
+
+
+
+
+
+import requests
+from urllib.parse import urlencode
+import json
+
+
+url = "http://localhost:8003/api/v1/job/"
+
+login_url = "http://localhost:8003/api/v1/login/"
+
+auth_data = json.dumps({"email": "admin@admin.com", "password": "admin"})
+
+login_data = requests.post(
+    login_url, auth_data, headers={"Content-Type": "application/json"}
+)
+
+access_token = login_data.json()["access"]
+data = json.dumps(
+    {
+        "job_skills": [
+            # {"skill": {"name": "Python"}, "skill_level": "advanced"},
+            # {"skill": {"name": "JavaScript"}, "skill_level": "intermidiate"},
+            {"skill": {"name": "Django"}, "skill_level": "beginner"},
+            # {"skill": {"name": "React"}, "skill_level": "advanced"},
+            # {"skill": {"name": "SQL"}, "skill_level": "advanced"},
+            # {"skill": {"name": "Ruby"}, "skill_level": "advanced"}
+        ],
+        "employment_type": "Full time",
+        "job_title": "SOFTWARE DEVELOPER",
+        "job_description": "PYTHON DEVELOPER",
+        "visibility": "Public",
+        "application_deadline": "2025-10-10",
+        "salary": 200,
+        "company_name": "Dangote"
+    }
+)
+
+# print(data)
+response = requests.post(
+    url=url,
+    data=data,
+    headers={
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+    },
+)
+print(response.json())
+
+
+# get_req=requests.get(url="http://localhost:8003/api/v1/job/job-list/")
+# print(get_req.json())
