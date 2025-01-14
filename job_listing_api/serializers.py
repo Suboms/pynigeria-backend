@@ -56,7 +56,7 @@ class JobSerializer(TaggitSerializer, serializers.ModelSerializer, Helper):
     job_skills = JobSkillSerializer(many=True, required=True)
     tags = TagListSerializerField(read_only=True)
     employment_type = serializers.ChoiceField(choices=JobTypeChoice.choices)
-    company_name = serializers.CharField(required=False)
+    #company_name = serializers.CharField(required=False)
     original_job = serializers.HyperlinkedRelatedField(
         view_name="job-detail", lookup_field="slug", read_only=True
     )

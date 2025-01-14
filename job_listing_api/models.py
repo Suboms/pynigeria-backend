@@ -59,11 +59,12 @@ class Skill(models.Model):
 
     def __str__(self) -> str:
         return self.name
+        
 class Job(models.Model):
     company = models.ForeignKey(
         Company, on_delete=models.SET_NULL, null=True, to_field="name"
     )
-    company_name = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255, null=True)
     job_title = models.CharField(max_length=255)
     job_description = models.TextField()
     skills = models.ManyToManyField(

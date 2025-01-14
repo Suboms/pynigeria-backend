@@ -28,9 +28,9 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS_VALUE", "127.0.0.1").split(",")  # Use 
 # )  # Same comma-value-seperation as above
 
 # SECURITY WARNING: don't run with debug turned on in production!
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
-CSRF_COOKIE_HTTPONLY = False
+#CSRF_COOKIE_SAMESITE = 'None'
+#CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+#CSRF_COOKIE_HTTPONLY = False
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
